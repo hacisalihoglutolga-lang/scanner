@@ -1,0 +1,292 @@
+/* ── Sayfa Kapsayıcı ── */
+.pp-page {
+  min-height: 100vh;
+  background: #070d1a;
+  color: #e2e8f0;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ── */
+.pp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background: #0a1220;
+  border-bottom: 1px solid #1a2a42;
+  flex-wrap: wrap;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.pp-hdr-left { display: flex; align-items: center; gap: 14px; }
+.pp-hdr-right { display: flex; align-items: center; gap: 10px; }
+
+.pp-back-btn {
+  background: #0f1f3a; border: 1px solid #1e3a5a; color: #64748b;
+  padding: 7px 14px; border-radius: 7px; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all .15s;
+}
+.pp-back-btn:hover { color: #38bdf8; border-color: #38bdf8; }
+
+.pp-title-wrap { display: flex; flex-direction: column; }
+.pp-logo   { font-size: 16px; font-weight: 800; color: #818cf8; letter-spacing: 1px; }
+.pp-subtitle { font-size: 11px; color: #475569; }
+
+.pp-edit-btn {
+  background: #0f1f3a; border: 1px solid #1e3a5a; color: #94a3b8;
+  padding: 8px 16px; border-radius: 7px; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all .15s;
+}
+.pp-edit-btn:hover { border-color: #60a5fa; color: #60a5fa; }
+
+.pp-analyze-btn {
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+  border: none; color: #fff; padding: 9px 20px; border-radius: 8px;
+  font-size: 13px; font-weight: 700; cursor: pointer; transition: opacity .15s;
+  display: flex; align-items: center; gap: 7px;
+}
+.pp-analyze-btn:disabled { opacity: .5; cursor: not-allowed; }
+.pp-spin { display: inline-block; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Portföy Tablosu ── */
+.pp-portfolio-section {
+  padding: 20px 24px 0;
+}
+.pp-section-title {
+  font-size: 13px; font-weight: 700; color: #94a3b8; margin-bottom: 12px;
+  letter-spacing: .5px;
+}
+.pp-table-wrap { overflow-x: auto; }
+.pp-table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+}
+.pp-table th {
+  background: #0d1a2e; color: #475569; font-size: 10px; font-weight: 600;
+  padding: 8px 10px; text-align: left; border-bottom: 1px solid #1a2a42;
+  text-transform: uppercase; letter-spacing: .5px; white-space: nowrap;
+}
+.pp-table td {
+  padding: 9px 10px; border-bottom: 1px solid #0e1a2d; white-space: nowrap;
+}
+.pp-table tr:hover td { background: #0d1828; }
+.pp-ticker-cell { font-size: 13px; font-weight: 800; color: #f1f5f9; }
+.pp-ticker-btn  { cursor: pointer; }
+.pp-ticker-btn:hover { color: #38bdf8; text-decoration: underline; }
+.pp-num { text-align: right; font-weight: 600; }
+.pp-pos { color: #22c55e; }
+.pp-neg { color: #ef4444; }
+
+.pp-weight-bar-wrap { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.pp-weight-bar { height: 4px; border-radius: 2px; background: #3b82f6; min-width: 2px; }
+
+.pp-cell-input {
+  background: #0f1f3a; border: 1px solid #1e3a5a; color: #e2e8f0;
+  padding: 4px 8px; border-radius: 5px; font-size: 12px; width: 90px;
+  font-family: inherit;
+}
+.pp-cell-input:focus { outline: none; border-color: #3b82f6; }
+
+.pp-remove-btn {
+  background: none; border: none; color: #475569; cursor: pointer;
+  font-size: 13px; padding: 3px 6px; border-radius: 4px;
+}
+.pp-remove-btn:hover { color: #ef4444; background: #1a0808; }
+
+.pp-add-row-btn {
+  margin-top: 8px; background: #0f1f3a; border: 1px dashed #1e3a5a;
+  color: #475569; padding: 7px 16px; border-radius: 6px; font-size: 12px;
+  font-weight: 600; cursor: pointer; transition: all .15s; width: 100%;
+}
+.pp-add-row-btn:hover { border-color: #3b82f6; color: #60a5fa; }
+
+/* ── Özet Satırı ── */
+.pp-summary-row {
+  display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; padding-top: 4px;
+}
+.pp-sum-card {
+  background: #0d1828; border: 1px solid #1a2a42; border-radius: 8px;
+  padding: 10px 14px; display: flex; flex-direction: column; gap: 3px; min-width: 120px;
+}
+.pp-sum-lbl { font-size: 9px; color: #475569; text-transform: uppercase; letter-spacing: .5px; }
+.pp-sum-val { font-size: 16px; font-weight: 800; color: #e2e8f0; }
+
+/* ── Loading ── */
+.pp-loading {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 60px 24px;
+}
+.pp-loading-inner { text-align: center; }
+.pp-big-spin {
+  font-size: 48px; color: #3b82f6; animation: spin 1.2s linear infinite;
+  display: block; margin-bottom: 16px;
+}
+.pp-loading-title { font-size: 18px; font-weight: 700; color: #e2e8f0; margin-bottom: 16px; }
+.pp-loading-steps { display: flex; flex-direction: column; gap: 6px; }
+.pp-step { font-size: 12px; color: #475569; }
+
+/* ── Empty Prompt ── */
+.pp-empty-prompt {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 60px 24px; gap: 12px; text-align: center;
+}
+.pp-empty-icon { font-size: 48px; color: #1e3a5a; }
+.pp-empty-title { font-size: 20px; font-weight: 800; color: #475569; }
+.pp-empty-sub { font-size: 13px; color: #334155; line-height: 1.6; }
+.pp-analyze-btn-big {
+  margin-top: 8px;
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+  border: none; color: #fff; padding: 14px 32px; border-radius: 10px;
+  font-size: 15px; font-weight: 700; cursor: pointer; letter-spacing: .5px;
+}
+
+/* ── Framework Sekmeler ── */
+.pp-results { display: flex; flex-direction: column; flex: 1; }
+
+.pp-fw-tabs {
+  display: flex; gap: 6px; padding: 16px 24px 0; overflow-x: auto;
+  border-bottom: 1px solid #1a2a42; background: #0a1220;
+}
+.pp-fw-tab {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: #0f1a2e; border: 1px solid #1a2e46; border-bottom: none;
+  color: #64748b; padding: 8px 16px; border-radius: 7px 7px 0 0;
+  font-family: inherit; cursor: pointer; transition: all .15s;
+  min-width: 110px; flex-shrink: 0;
+}
+.pp-fw-tab:hover { border-color: #3b82f6; color: #94a3b8; }
+.pp-fw-tab-active { background: #0d1828; border-color: #3b82f6; color: #fff; }
+.pp-fw-icon  { font-size: 16px; }
+.pp-fw-label { font-size: 11px; font-weight: 700; }
+.pp-fw-sub   { font-size: 9px; color: #475569; }
+.pp-fw-tab-active .pp-fw-sub { color: #94a3b8; }
+
+/* ── Framework Panel ── */
+.pp-fw-content { padding: 20px 24px; flex: 1; overflow-y: auto; }
+
+.pp-fw-panel { display: flex; flex-direction: column; gap: 16px; }
+.pp-fw-panel-hdr {
+  display: flex; align-items: center; gap: 12px;
+  padding-bottom: 12px; border-bottom: 1px solid #1a2a42;
+}
+.pp-fw-panel-icon { font-size: 28px; }
+.pp-fw-panel-title { font-size: 18px; font-weight: 800; color: #f1f5f9; }
+.pp-fw-panel-sub   { font-size: 11px; color: #475569; margin-top: 2px; }
+
+/* ── AI Kutusu ── */
+.pp-ai-box {
+  background: #080f1c; border-left: 3px solid #3b82f6; border-radius: 0 8px 8px 0;
+  padding: 12px 16px; display: flex; flex-direction: column; gap: 7px;
+}
+.pp-ai-box-hdr  { font-size: 10px; font-weight: 700; letter-spacing: .5px; }
+.pp-ai-box-text { font-size: 13px; color: #94a3b8; line-height: 1.7; white-space: pre-wrap; }
+.pp-ai-note     { font-size: 11px; color: #475569; background: #0a1220; border: 1px solid #1a2a42; border-radius: 6px; padding: 8px 12px; }
+
+/* ── Metrik Rozetleri ── */
+.pp-metrics-header {
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.pp-metric-badge {
+  background: #080f1c; border: 1px solid #1a2a42; border-radius: 8px;
+  padding: 8px 14px; display: flex; flex-direction: column; gap: 3px;
+}
+.pp-metric-lbl { font-size: 9px; color: #475569; text-transform: uppercase; letter-spacing: .4px; }
+.pp-metric-val { font-size: 16px; font-weight: 800; }
+
+/* ── Hisse Tablosu ── */
+.pp-stock-table-wrap { overflow-x: auto; }
+.pp-stock-table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+}
+.pp-stock-table th {
+  background: #0d1a2e; color: #475569; font-size: 10px; font-weight: 600;
+  padding: 7px 10px; text-align: left; border-bottom: 1px solid #1a2a42;
+  text-transform: uppercase; white-space: nowrap;
+}
+.pp-stock-table td {
+  padding: 8px 10px; border-bottom: 1px solid #0e1a2d;
+  font-weight: 600; white-space: nowrap;
+}
+.pp-stock-table tr:hover td { background: #0d1828; }
+.pp-stock-ticker { font-size: 13px; font-weight: 800; color: #f1f5f9; }
+
+/* ── Action Badge ── */
+.pp-action-badge {
+  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
+  white-space: nowrap;
+}
+.ab-strong { background: linear-gradient(135deg,#b45309,#f59e0b); color: #000; }
+.ab-buy    { background: #052e16; color: #4ade80; border: 1px solid #16a34a; }
+.ab-watch  { background: #0f172a; color: #60a5fa; border: 1px solid #3b82f6; }
+.ab-weak   { background: #431407; color: #fb923c; border: 1px solid #ea580c; }
+.ab-sell   { background: #3b0a0a; color: #f87171; border: 1px solid #b91c1c; }
+
+/* ── Bridgewater Sektör Grafiği ── */
+.pp-sector-chart { display: flex; flex-direction: column; gap: 6px; }
+.pp-sector-row   { display: flex; align-items: center; gap: 10px; }
+.pp-sector-name  { font-size: 11px; color: #94a3b8; min-width: 160px; }
+.pp-sector-bar-wrap { flex: 1; height: 8px; background: #0d1828; border-radius: 4px; overflow: hidden; }
+.pp-sector-bar   { height: 100%; background: #a78bfa; border-radius: 4px; transition: width .3s; }
+.pp-sector-pct   { font-size: 11px; font-weight: 700; color: #e2e8f0; min-width: 40px; text-align: right; }
+
+/* ── Citadel Sektör ── */
+.pp-cit-sector-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; background: #080f1c; border: 1px solid #1a2a42;
+  border-radius: 7px; margin-bottom: 6px;
+}
+.pp-cit-color   { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.pp-cit-name    { font-size: 12px; font-weight: 700; color: #e2e8f0; min-width: 140px; }
+.pp-cit-tickers { font-size: 10px; color: #475569; min-width: 100px; }
+.pp-cit-bar-wrap { flex: 1; height: 6px; background: #0d1828; border-radius: 3px; overflow: hidden; }
+.pp-cit-bar     { height: 100%; border-radius: 3px; }
+.pp-cit-pct     { font-size: 12px; font-weight: 700; color: #e2e8f0; min-width: 45px; text-align: right; }
+.pp-cit-score   { font-size: 12px; font-weight: 700; min-width: 40px; text-align: right; }
+
+/* ── Renaissance ── */
+.pp-ren-legend  { display: flex; gap: 14px; margin-bottom: 8px; flex-wrap: wrap; }
+.pp-ren-leg-item { font-size: 10px; color: #64748b; display: flex; align-items: center; gap: 4px; }
+.pp-ren-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; background: #080f1c; border: 1px solid #1a2a42;
+  border-radius: 8px; margin-bottom: 6px;
+}
+.pp-ren-rank      { font-size: 16px; font-weight: 800; color: #334155; min-width: 28px; }
+.pp-ren-ticker    { font-size: 14px; font-weight: 800; color: #f1f5f9; min-width: 70px; }
+.pp-ren-bars      { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.pp-factor-bar-wrap { height: 6px; background: #0d1828; border-radius: 3px; overflow: hidden; }
+.pp-factor-bar    { height: 100%; border-radius: 3px; }
+.pp-ren-composite { font-size: 20px; font-weight: 800; min-width: 50px; text-align: right; }
+
+/* ── BlackRock Projeksiyon ── */
+.pp-projection-title { font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 8px; }
+.pp-projection-grid  { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+@media (max-width: 768px) { .pp-projection-grid { grid-template-columns: repeat(2, 1fr); } }
+.pp-proj-cell {
+  background: #080f1c; border: 1px solid #0e2a40; border-radius: 6px;
+  padding: 8px; display: flex; flex-direction: column; gap: 4px;
+}
+.pp-proj-yr  { font-size: 9px; color: #475569; }
+.pp-proj-val { font-size: 12px; font-weight: 700; color: #22c55e; }
+
+/* ── Two Sigma Makro ── */
+.pp-macro-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (max-width: 640px) { .pp-macro-grid { grid-template-columns: 1fr; } }
+.pp-macro-card {
+  background: #080f1c; border: 1px solid #1a2a42; border-radius: 8px;
+  padding: 14px; display: flex; flex-direction: column; gap: 6px;
+}
+.pp-macro-title { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+.pp-macro-val   { font-size: 18px; font-weight: 800; }
+.pp-macro-desc  { font-size: 11px; color: #475569; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .pp-header   { padding: 12px 16px; }
+  .pp-portfolio-section { padding: 14px 16px 0; }
+  .pp-fw-content { padding: 14px 16px; }
+}

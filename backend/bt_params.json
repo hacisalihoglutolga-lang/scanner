@@ -1,0 +1,12 @@
+{
+  "thresholds": [
+    7.5,
+    5.5,
+    4.0,
+    2.5
+  ],
+  "weights_1d": 0.8,
+  "mtf_bonus": 0.7,
+  "evolved_at": "2026-03-18 05:21",
+  "target_ev": 1.79
+}

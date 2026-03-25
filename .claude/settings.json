@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"http://localhost:8010/api/stock/GARAN/ohlcv?days=180\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); data=d[''''data'''']; from datetime import datetime; print\\(f''''Count: {len\\(data\\)}''''\\); print\\(''''First:'''', datetime.fromtimestamp\\(data[0][''''time'''']\\).strftime\\(''''%Y-%m-%d''''\\)\\); print\\(''''Last:'''', datetime.fromtimestamp\\(data[-1][''''time'''']\\).strftime\\(''''%Y-%m-%d''''\\)\\)\")",
+      "Bash(curl -s \"http://localhost:8010/api/stock/GARAN/ohlcv?days=30&interval=4h\")",
+      "Bash(curl -s \"http://localhost:8010/api/stock/GARAN/ohlcv?days=365&interval=1wk\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); data=d.get\\(''''data'''',[]\\); print\\(f''''weekly candles: {len\\(data\\)}''''\\)\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); cats=d[''''categories'''']; print\\({k: len\\(v\\) for k,v in cats.items\\(\\)}\\)\")",
+      "Bash(curl -s -o /dev/null -w \"%{time_total}s %{http_code}\" \"http://localhost:8010/api/scan?category=BIST30&limit=200\")",
+      "Bash(curl -s \"http://localhost:8010/api/scan/stream?category=TÜMÜ&limit=200\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f''''stocks: {len\\(d[\"\"stocks\"\"]\\)}, pending: {len\\(d[\"\"pending\"\"]\\)}''''\\)\")",
+      "Bash(curl -sv \"http://localhost:8010/api/scan/stream?category=T%C3%BCMC%C3%9C&limit=200\")",
+      "Bash(curl -s \"http://localhost:8010/api/scan/stream?category=BIST30&limit=500\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f''''stocks:{len\\(d[\"\"stocks\"\"]\\)} pending:{len\\(d[\"\"pending\"\"]\\)}''''\\)\")",
+      "Bash(curl -s \"http://localhost:5173/api/scan/stream?category=BIST30&limit=500\")",
+      "Bash(python3 -c \":*)"
+    ]
+  }
+}
