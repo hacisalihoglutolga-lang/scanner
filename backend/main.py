@@ -195,9 +195,16 @@ async def scan_stocks(
 
 
 @app.get("/api/scan/stream")
-async def scan_stream(category: str = "BIST30", limit: int = 1000):
+async def scan_stream(category: str = "BIST30", limit: int = 1000, force: bool = False):
     """Return cached results immediately, trigger background refresh."""
     stocks = CATEGORIES.get(category.upper(), CATEGORIES["BIST30"])[:limit]
+
+    # force=True: bust cache for this category so fresh analysis runs
+    if force:
+        for t in stocks:
+            _cache.pop(t, None)
+            _cache_time.pop(t, None)
+            _skip_cache.pop(t, None)
 
     out = []
     stale = []

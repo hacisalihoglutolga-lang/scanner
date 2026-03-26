@@ -11,9 +11,18 @@ const ACTION_CLS = {
 
 const TF_TABS = [
   { key: 'genel', label: 'Genel',    actionKey: 'action',    scoreKey: 'score'    },
+  { key: '4h',    label: '4 Saat',   actionKey: 'action_4h', scoreKey: 'score_4h' },
   { key: '1d',    label: 'Günlük',   actionKey: 'action_1d', scoreKey: 'score_1d' },
   { key: '1w',    label: 'Haftalık', actionKey: 'action_1w', scoreKey: 'score_1w' },
   { key: '1mo',   label: 'Aylık',    actionKey: 'action_1mo',scoreKey: 'score_1mo'},
+]
+
+const ALL_TF_COLS = [
+  { key: 'score',     label: 'Genel',  actionKey: 'action',     scoreKey: 'score'     },
+  { key: 'score_4h',  label: '4S',     actionKey: 'action_4h',  scoreKey: 'score_4h'  },
+  { key: 'score_1d',  label: 'Gün',    actionKey: 'action_1d',  scoreKey: 'score_1d'  },
+  { key: 'score_1w',  label: 'Hft',    actionKey: 'action_1w',  scoreKey: 'score_1w'  },
+  { key: 'score_1mo', label: 'Aylık',  actionKey: 'action_1mo', scoreKey: 'score_1mo' },
 ]
 
 export default function SignalsPage({ onBack, onTickerClick }) {
@@ -142,9 +151,12 @@ export default function SignalsPage({ onBack, onTickerClick }) {
             <thead>
               <tr>
                 <th className="sig-th-sort" onClick={() => handleSort('ticker')}>Hisse{sortIcon('ticker')}</th>
-                <th className="sig-th-sort" onClick={() => handleSort('curAction')}>{curTab.label} Sinyal{sortIcon('curAction')}</th>
-                <th className="sig-th-sort" onClick={() => handleSort('curScore')}>Skor{sortIcon('curScore')}</th>
-                {tfTab !== 'genel' && <th className="sig-th-sort" onClick={() => handleSort('action')}>Genel{sortIcon('action')}</th>}
+                {ALL_TF_COLS.map(col => (
+                  <th key={col.key} className={`sig-th-sort sig-th-tf ${tfTab === col.key || (tfTab === 'genel' && col.key === 'score') ? 'sig-th-active' : ''}`}
+                    onClick={() => handleSort(col.scoreKey)}>
+                    {col.label}{sortIcon(col.scoreKey)}
+                  </th>
+                ))}
                 <th className="sig-th-sort" onClick={() => handleSort('price')}>Fiyat{sortIcon('price')}</th>
                 <th className="sig-th-sort" onClick={() => handleSort('sl')}>Zarar Kes{sortIcon('sl')}</th>
                 <th className="sig-th-sort" onClick={() => handleSort('tp')}>Hedef 1{sortIcon('tp')}</th>
@@ -156,11 +168,17 @@ export default function SignalsPage({ onBack, onTickerClick }) {
               {sorted.map((s, i) => (
                 <tr key={i}>
                   <td className="sig-ticker sig-ticker-btn" onClick={() => onTickerClick?.(s.ticker)}>{s.ticker}</td>
-                  <td><span className={`sig-badge ${ACTION_CLS[s.curAction] || ''}`}>{s.curAction || '—'}</span></td>
-                  <td className="sig-score">{s.curScore?.toFixed(1) ?? '—'}</td>
-                  {tfTab !== 'genel' && (
-                    <td><span className={`sig-badge ${ACTION_CLS[s.action] || ''}`}>{s.action}</span></td>
-                  )}
+                  {ALL_TF_COLS.map(col => {
+                    const act = s[col.actionKey]
+                    const sc  = s[col.scoreKey]
+                    const isActive = tfTab === col.key || (tfTab === 'genel' && col.key === 'score')
+                    return (
+                      <td key={col.key} className={`sig-tf-cell ${isActive ? 'sig-tf-cell-active' : ''}`}>
+                        <span className={`sig-badge sig-badge-sm ${ACTION_CLS[act] || ''}`}>{act || '—'}</span>
+                        <span className="sig-tf-score">{sc != null ? sc.toFixed(1) : '—'}</span>
+                      </td>
+                    )
+                  })}
                   <td>₺{s.price?.toFixed(2)}</td>
                   <td className="sig-sl">{s.sl ? `₺${s.sl?.toFixed(2)}` : '—'}</td>
                   <td className="sig-tp">{s.tp ? `₺${s.tp?.toFixed(2)}` : '—'}</td>

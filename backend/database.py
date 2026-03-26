@@ -74,19 +74,22 @@ def get_recent_signals(limit=50):
         try:
             d = json.loads(r[6] or '{}')
             tp2        = d.get("tp2") or (d.get("tf_1d") or {}).get("tp2")
+            action_4h  = d.get("action_4h")
             action_1d  = d.get("action_1d")
             action_1w  = d.get("action_1w")
             action_1mo = d.get("action_1mo")
+            score_4h   = (d.get("tf_4h")  or {}).get("score")
             score_1d   = (d.get("tf_1d")  or {}).get("score")
             score_1w   = (d.get("tf_1w")  or {}).get("score")
             score_1mo  = (d.get("tf_1mo") or {}).get("score")
         except Exception:
-            tp2 = action_1d = action_1w = action_1mo = None
-            score_1d = score_1w = score_1mo = None
+            tp2 = action_4h = action_1d = action_1w = action_1mo = None
+            score_4h = score_1d = score_1w = score_1mo = None
         result.append({
             "ticker": r[0], "action": r[1], "score": r[2],
             "price": r[3], "sl": r[4], "tp": r[5], "tp2": tp2,
             "created_at": r[7],
+            "action_4h": action_4h, "score_4h": score_4h,
             "action_1d": action_1d, "score_1d": score_1d,
             "action_1w": action_1w, "score_1w": score_1w,
             "action_1mo": action_1mo, "score_1mo": score_1mo,

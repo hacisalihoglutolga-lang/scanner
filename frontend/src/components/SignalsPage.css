@@ -157,3 +157,29 @@
 
 .sig-loading { display: flex; align-items: center; gap: 10px; color: #64748b; padding: 40px; }
 .sig-empty   { text-align: center; color: #475569; padding: 60px; font-size: 14px; }
+
+/* Çok-TF hücreleri */
+.sig-th-tf { text-align: center; }
+.sig-th-active { color: #a5b4fc !important; }
+
+.sig-tf-cell {
+  text-align: center;
+  padding: 8px 10px;
+}
+.sig-tf-cell-active {
+  background: rgba(99,102,241,0.06);
+}
+.sig-badge-sm {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.sig-tf-score {
+  display: block;
+  font-size: 11px;
+  color: #f59e0b;
+  font-weight: 600;
+  margin-top: 2px;
+}
