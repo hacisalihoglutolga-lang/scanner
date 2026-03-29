@@ -16,6 +16,7 @@ frontend/.vite/
 .env
 .env.*
 !.env.example
+backend/.jwt_secret
 
 # OS
 .DS_Store

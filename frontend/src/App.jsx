@@ -52,14 +52,20 @@ function getIsAdmin()  {
   } catch { return false }
 }
 
-// Tüm API isteklerine otomatik token ekle
+// Tüm API isteklerine otomatik token ekle, 401'de logout
 const _origFetch = window.fetch
-window.fetch = (url, opts = {}) => {
+window.fetch = async (url, opts = {}) => {
   const token = getToken()
   if (token && typeof url === 'string' && url.startsWith('/api/')) {
     opts = { ...opts, headers: { ...opts.headers, Authorization: `Bearer ${token}` } }
   }
-  return _origFetch(url, opts)
+  const res = await _origFetch(url, opts)
+  if (res.status === 401 && typeof url === 'string' && url.startsWith('/api/') && !url.includes('/api/login')) {
+    localStorage.removeItem('ths_token')
+    localStorage.removeItem('ths_user')
+    window.location.reload()
+  }
+  return res
 }
 
 // ── Favoriler localStorage yardımcıları ──────────────────────────────────────

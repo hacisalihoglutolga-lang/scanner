@@ -11,7 +11,23 @@ from fastapi import HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 DB_PATH = "signals.db"
-JWT_SECRET = os.environ.get("JWT_SECRET", secrets.token_urlsafe(32))
+def _load_or_create_secret() -> str:
+    """Secret'ı dosyadan oku, yoksa oluştur ve kaydet — restart'ta kaybolmaz."""
+    env = os.environ.get("JWT_SECRET")
+    if env:
+        return env
+    secret_file = os.path.join(os.path.dirname(__file__), ".jwt_secret")
+    try:
+        with open(secret_file) as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        secret = secrets.token_urlsafe(48)
+        with open(secret_file, "w") as f:
+            f.write(secret)
+        os.chmod(secret_file, 0o600)
+        return secret
+
+JWT_SECRET = _load_or_create_secret()
 JWT_EXP_DAYS = 30
 
 security = HTTPBearer()
