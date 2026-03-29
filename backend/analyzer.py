@@ -37,7 +37,7 @@ def _set_rate_limit(wait_sec: float = 60.0):
 
 def _yf_history(ticker_obj, **kwargs):
     """yfinance history çağrısını rate limit'e karşı retry ile sarmalar."""
-    for attempt in range(5):
+    for attempt in range(3):
         _wait_if_rate_limited()
         try:
             df = ticker_obj.history(**kwargs)
@@ -47,12 +47,11 @@ def _yf_history(ticker_obj, **kwargs):
         except Exception as e:
             msg = str(e).lower()
             if "too many requests" in msg or "rate limit" in msg or "429" in msg:
-                # İlk algılamada 60-90 sn global bekleme, sonra daha az
-                wait_sec = 90.0 if attempt == 0 else 30.0 * attempt
+                wait_sec = 20.0 if attempt == 0 else 10.0 * attempt
                 _set_rate_limit(wait_sec)
             else:
                 raise
-    return ticker_obj.history(**kwargs)  # son deneme
+    return ticker_obj.history(**kwargs)
 
 
 # ─── Temel Göstergeler ────────────────────────────────────────────────────────

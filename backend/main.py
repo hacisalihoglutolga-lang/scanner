@@ -73,7 +73,7 @@ _cache: dict = {}
 _cache_time: dict = {}
 CACHE_TTL = 1800  # 30 minutes
 
-executor = ThreadPoolExecutor(max_workers=3)
+executor = ThreadPoolExecutor(max_workers=5)
 _yf_semaphore: asyncio.Semaphore | None = None
 
 # Permanently delisted tickers — never queried again
@@ -109,7 +109,7 @@ def _safe_analyze(ticker: str) -> dict | None:
 @app.on_event("startup")
 async def startup():
     global _yf_semaphore
-    _yf_semaphore = asyncio.Semaphore(3)
+    _yf_semaphore = asyncio.Semaphore(5)
     init_db()
     init_users_db()
 
@@ -189,7 +189,14 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
     try:
         loop = asyncio.get_event_loop()
         async with _yf_semaphore:
-            result = await loop.run_in_executor(executor, _safe_analyze, ticker)
+            try:
+                result = await asyncio.wait_for(
+                    loop.run_in_executor(executor, _safe_analyze, ticker),
+                    timeout=30.0
+                )
+            except asyncio.TimeoutError:
+                _skip_cache[ticker] = time.time() + SKIP_TTL
+                return None
 
         if result and not result.get("error"):
             result = _sanitize(result)
