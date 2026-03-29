@@ -19,39 +19,42 @@ _rl_lock   = threading.Lock()
 _rl_until  = 0.0          # Unix timestamp
 
 def _wait_if_rate_limited():
-    """Rate limit varsa bekle — max 20s (asyncio timeout 30s içinde kalır)."""
+    """Rate limit varsa bekle — küçük parçalara bölerek uyku."""
     global _rl_until
-    now = time.time()
-    wait = _rl_until - now
-    if wait > 0:
-        time.sleep(min(wait, 20.0) + random.uniform(0.2, 0.8))
+    deadline = _rl_until
+    if deadline <= time.time():
+        return
+    # 1'er saniyelik dilimler halinde bekle — toplam max 25s
+    elapsed = 0
+    while time.time() < deadline and elapsed < 25:
+        time.sleep(1.0)
+        elapsed += 1
 
 def _set_rate_limit(wait_sec: float = 20.0):
     """Rate limit algılandı."""
     global _rl_until
     with _rl_lock:
-        new_until = time.time() + min(wait_sec, 20.0)  # max 20s cap
+        new_until = time.time() + min(wait_sec, 25.0)
         if new_until > _rl_until:
             _rl_until = new_until
 
 
 def _yf_history(ticker_obj, **kwargs):
     """yfinance history çağrısını rate limit'e karşı retry ile sarmalar."""
-    for attempt in range(2):
-        _wait_if_rate_limited()
-        try:
-            df = ticker_obj.history(**kwargs)
-            if df is not None and not df.empty:
-                return df
+    _wait_if_rate_limited()
+    try:
+        df = ticker_obj.history(**kwargs)
+        if df is not None and not df.empty:
             return df
-        except Exception as e:
-            msg = str(e).lower()
-            if "too many requests" in msg or "rate limit" in msg or "429" in msg:
-                wait_sec = 15.0 if attempt == 0 else 20.0
-                _set_rate_limit(wait_sec)
-            else:
-                raise
-    return ticker_obj.history(**kwargs)
+        return df
+    except Exception as e:
+        msg = str(e).lower()
+        if "too many requests" in msg or "rate limit" in msg or "429" in msg:
+            _set_rate_limit(15.0)
+            # bir kez daha dene
+            _wait_if_rate_limited()
+            return ticker_obj.history(**kwargs)
+        raise
 
 
 # ─── Temel Göstergeler ────────────────────────────────────────────────────────

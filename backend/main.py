@@ -109,7 +109,7 @@ def _safe_analyze(ticker: str) -> dict | None:
 @app.on_event("startup")
 async def startup():
     global _yf_semaphore
-    _yf_semaphore = asyncio.Semaphore(2)
+    _yf_semaphore = asyncio.Semaphore(8)
     init_db()
     init_users_db()
 
@@ -192,7 +192,7 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
             try:
                 result = await asyncio.wait_for(
                     loop.run_in_executor(executor, _safe_analyze, ticker),
-                    timeout=30.0
+                    timeout=60.0
                 )
             except asyncio.TimeoutError:
                 _skip_cache[ticker] = time.time() + SKIP_TTL
@@ -231,9 +231,7 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
                 _delisted.add(ticker)
                 _save_delisted(_delisted)
             elif "rate-limited" in err:
-                # Rate limit — _rl_until dolunca tekrar dene
-                from analyzer import _rl_until as _rl
-                _skip_cache[ticker] = max(time.time() + 5, _rl + 1)
+                _skip_cache[ticker] = time.time() + 5
             else:
                 # Geçici hata — 2 dakika sonra tekrar dene
                 _skip_cache[ticker] = time.time() + SKIP_TTL
