@@ -100,10 +100,11 @@ _delisted: set = _load_delisted()
 _in_progress: set = set()
 
 # Temporarily skip cache for non-delisted failures
-_skip_cache: dict = {}   # ticker -> expiry timestamp
-_timeout_count: dict = {}  # ticker -> kaç kez timeout yedi
-SKIP_TTL = 60            # genel hata: 60s
-TIMEOUT_SKIP_TTL = 30    # timeout: 30s — daha hızlı yeniden dene
+_skip_cache: dict = {}  # ticker -> expiry timestamp
+_fail_count: dict = {}  # ticker -> toplam başarısız deneme sayısı
+SKIP_TTL = 15           # genel hata: 15s — hızlı yeniden dene
+TIMEOUT_SKIP_TTL = 20   # asyncio timeout: 20s
+MAX_FAILS = 2           # 2 başarısız denemeden sonra kalıcı atla
 
 
 def _safe_analyze(ticker: str) -> dict | None:
@@ -195,13 +196,12 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
             try:
                 result = await asyncio.wait_for(
                     loop.run_in_executor(executor, _safe_analyze, ticker),
-                    timeout=60.0
+                    timeout=40.0
                 )
             except asyncio.TimeoutError:
-                cnt = _timeout_count.get(ticker, 0) + 1
-                _timeout_count[ticker] = cnt
-                if cnt >= 3:
-                    # 3 kez timeout → kalıcı atla
+                cnt = _fail_count.get(ticker, 0) + 1
+                _fail_count[ticker] = cnt
+                if cnt >= MAX_FAILS:
                     _delisted.add(ticker)
                     _save_delisted(_delisted)
                 else:
@@ -210,6 +210,7 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
                 return None
 
         if result and result.get("error") is None:
+            _fail_count.pop(ticker, None)  # başarılıysa sayacı sıfırla
             result = _sanitize(result)
             _cache[ticker] = result
             _cache_time[ticker] = time.time()
@@ -236,16 +237,19 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
                     pass
         elif result and result.get("error") is not None:
             err = result.get("error", "").lower()
-            # Sadece kesin delisted ifadesinde kalıcı blacklist yap
             if "delisted" in err and "may be" not in err:
                 _delisted.add(ticker)
                 _save_delisted(_delisted)
             elif "rate-limited" in err:
-                # _rl_until dolunca yeniden dene (rate limit bittikten hemen sonra)
                 _skip_cache[ticker] = max(_analyzer._rl_until + 1.0, time.time() + 5)
             else:
-                # Geçici hata — 2 dakika sonra tekrar dene
-                _skip_cache[ticker] = time.time() + SKIP_TTL
+                cnt = _fail_count.get(ticker, 0) + 1
+                _fail_count[ticker] = cnt
+                if cnt >= MAX_FAILS:
+                    _delisted.add(ticker)
+                    _save_delisted(_delisted)
+                else:
+                    _skip_cache[ticker] = time.time() + SKIP_TTL
 
         return result
     finally:

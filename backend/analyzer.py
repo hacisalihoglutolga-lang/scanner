@@ -13,7 +13,7 @@ import socket
 warnings.filterwarnings("ignore")
 
 # Her socket işlemi için max 12s — asılı kalan bağlantıları keser
-socket.setdefaulttimeout(12)
+socket.setdefaulttimeout(8)
 
 # yfinance 1.x kendi session'ını yönetiyor
 _yf_session = None
