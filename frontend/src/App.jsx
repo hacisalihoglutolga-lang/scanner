@@ -128,13 +128,23 @@ export default function AppRoot() {
   return <App token={token} username={username} isAdmin={getIsAdmin()} onLogout={handleLogout} />
 }
 
+function _loadStocks() {
+  try { return JSON.parse(localStorage.getItem('ths_stocks') || '[]') } catch { return [] }
+}
+function _loadLastScan() {
+  try { const s = localStorage.getItem('ths_last_scan'); return s ? new Date(s) : null } catch { return null }
+}
+function _loadCat() {
+  return localStorage.getItem('ths_cat') || 'BIST30'
+}
+
 function App({ token, username, isAdmin, onLogout }) {
   const [page, setPage]         = useState('scanner')
-  const [cat, setCat]           = useState('BIST30')
-  const [stocks, setStocks]     = useState([])
+  const [cat, setCat]           = useState(_loadCat)
+  const [stocks, setStocks]     = useState(_loadStocks)
   const [loading, setLoading]   = useState(false)
   const [scanning, setScanning] = useState(false)
-  const [lastScan, setLastScan] = useState(null)
+  const [lastScan, setLastScan] = useState(_loadLastScan)
   const [autoMs, setAutoMs]     = useState(0)
   const [actionF, setActionF]   = useState('TÜMÜ')
   const [filterTf, setFilterTf] = useState('genel')
@@ -155,6 +165,23 @@ function App({ token, username, isAdmin, onLogout }) {
 
   // Bildirim izni iste
   useEffect(() => { requestNotifPerm() }, [])
+
+  // Tarama sonuçlarını localStorage'a kaydet
+  useEffect(() => {
+    if (stocks.length > 0) {
+      try { localStorage.setItem('ths_stocks', JSON.stringify(stocks)) } catch {}
+    }
+  }, [stocks])
+
+  useEffect(() => {
+    if (lastScan) {
+      try { localStorage.setItem('ths_last_scan', lastScan.toISOString()) } catch {}
+    }
+  }, [lastScan])
+
+  useEffect(() => {
+    localStorage.setItem('ths_cat', cat)
+  }, [cat])
 
   // Load full BIST ticker list once for autocomplete
   useEffect(() => {
