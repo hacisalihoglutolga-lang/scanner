@@ -73,7 +73,7 @@ _cache: dict = {}
 _cache_time: dict = {}
 CACHE_TTL = 1800  # 30 minutes
 
-executor = ThreadPoolExecutor(max_workers=4)
+executor = ThreadPoolExecutor(max_workers=3)
 _yf_semaphore: asyncio.Semaphore | None = None
 
 # Permanently delisted tickers — never queried again
@@ -100,7 +100,7 @@ _in_progress: set = set()
 
 # Temporarily skip cache for non-delisted failures (10 min)
 _skip_cache: dict = {}  # ticker -> expiry timestamp
-SKIP_TTL = 600
+SKIP_TTL = 120  # 2 dakika — rate limit sonrası hızlı yeniden dene
 
 
 def _safe_analyze(ticker: str) -> dict | None:
@@ -109,7 +109,7 @@ def _safe_analyze(ticker: str) -> dict | None:
 @app.on_event("startup")
 async def startup():
     global _yf_semaphore
-    _yf_semaphore = asyncio.Semaphore(4)
+    _yf_semaphore = asyncio.Semaphore(3)
     init_db()
     init_users_db()
 
@@ -218,12 +218,12 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
                     pass
         elif result and result.get("error"):
             err = result.get("error", "").lower()
-            # Only permanently blacklist tickers that are truly gone from exchange
-            if any(kw in err for kw in ("delisted", "no data found", "not found", "symbol may be delisted")):
+            # Sadece kesin delisted ifadesinde kalıcı blacklist yap
+            if "delisted" in err and "may be" not in err:
                 _delisted.add(ticker)
                 _save_delisted(_delisted)
             else:
-                # Temporarily skip (rate limit, insufficient data, etc.) — retry in 10 min
+                # Geçici hata — 2 dakika sonra tekrar dene
                 _skip_cache[ticker] = time.time() + SKIP_TTL
 
         return result
