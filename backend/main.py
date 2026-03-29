@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -18,6 +18,8 @@ from patterns import scan_patterns, analyze_patterns
 from backtest import (backtest_tickers, compute_stats, evolve_params,
                       save_results, load_results, load_params, save_params,
                       correlation_analysis)
+from auth import (init_users_db, login, verify_token, require_admin,
+                  list_users, create_user, delete_user, change_password)
 
 def _sanitize(obj):
     """Recursively replace nan/inf with None so FastAPI can serialize it."""
@@ -38,6 +40,33 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Auth Middleware ────────────────────────────────────────────────────────────
+from fastapi import Request
+from fastapi.responses import JSONResponse
+import jwt as _jwt
+
+_PUBLIC = {"/api/login", "/health"}
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    path = request.url.path
+    # Public rotalar ve static dosyalar
+    if not path.startswith("/api/") or path in _PUBLIC:
+        return await call_next(request)
+    # Token kontrol
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return JSONResponse(status_code=401, content={"detail": "Giriş yapmanız gerekiyor"})
+    token = auth[7:]
+    try:
+        from auth import JWT_SECRET
+        _jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    except _jwt.ExpiredSignatureError:
+        return JSONResponse(status_code=401, content={"detail": "Token süresi doldu"})
+    except _jwt.InvalidTokenError:
+        return JSONResponse(status_code=401, content={"detail": "Geçersiz token"})
+    return await call_next(request)
 
 # In-memory cache
 _cache: dict = {}
@@ -82,6 +111,56 @@ async def startup():
     global _yf_semaphore
     _yf_semaphore = asyncio.Semaphore(4)
     init_db()
+    init_users_db()
+
+
+# ── Auth endpoints ─────────────────────────────────────────────────────────────
+
+@app.post("/api/login")
+async def api_login(body: dict):
+    username = body.get("username", "").strip()
+    password = body.get("password", "")
+    if not username or not password:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Kullanıcı adı ve şifre gerekli")
+    token = login(username, password)
+    return {"token": token, "username": username}
+
+
+@app.get("/api/users", dependencies=[Depends(require_admin)])
+async def api_list_users():
+    return {"users": list_users()}
+
+
+@app.post("/api/users", dependencies=[Depends(require_admin)])
+async def api_create_user(body: dict):
+    username = body.get("username", "").strip()
+    password = body.get("password", "")
+    is_admin = bool(body.get("is_admin", False))
+    if not username or not password:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Kullanıcı adı ve şifre gerekli")
+    create_user(username, password, is_admin)
+    return {"message": f"{username} oluşturuldu"}
+
+
+@app.delete("/api/users/{user_id}", dependencies=[Depends(require_admin)])
+async def api_delete_user(user_id: int):
+    delete_user(user_id)
+    return {"message": "Kullanıcı silindi"}
+
+
+@app.post("/api/users/{user_id}/password")
+async def api_change_password(user_id: int, body: dict, payload: dict = Depends(verify_token)):
+    if not payload.get("admin") and payload.get("uid") != user_id:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Yetki yok")
+    new_password = body.get("password", "")
+    if not new_password:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Yeni şifre gerekli")
+    change_password(user_id, new_password)
+    return {"message": "Şifre güncellendi"}
 
 
 def _cached(ticker: str) -> dict | None:

@@ -5,6 +5,8 @@ import PortfolioPage from './components/PortfolioPage'
 import ScreenerPage from './components/ScreenerPage'
 import SignalsPage from './components/SignalsPage'
 import BacktestPage from './components/BacktestPage'
+import LoginPage from './components/LoginPage'
+import UsersPage from './components/UsersPage'
 import './App.css'
 
 const CATS = [
@@ -38,13 +40,27 @@ const ACTION_COLOR = {
 const ACTION_ORDER = { 'GÜÇLÜ AL': 0, 'AL': 1, '\u0130ZLE': 2, 'ZAYIF': 3, 'SAT': 4 }
 const SETUP_ORDER  = { 'KIRILIM': 0, 'DÖNÜŞ': 1, 'STANDART': 2 }
 
+// ── Auth yardımcıları ─────────────────────────────────────────────────────────
+function getToken()    { return localStorage.getItem('ths_token') || '' }
+function getUsername() { return localStorage.getItem('ths_user')  || '' }
+
+// Tüm API isteklerine otomatik token ekle
+const _origFetch = window.fetch
+window.fetch = (url, opts = {}) => {
+  const token = getToken()
+  if (token && typeof url === 'string' && url.startsWith('/api/')) {
+    opts = { ...opts, headers: { ...opts.headers, Authorization: `Bearer ${token}` } }
+  }
+  return _origFetch(url, opts)
+}
+
 // ── Favoriler localStorage yardımcıları ──────────────────────────────────────
 function loadFavs() {
-  try { return new Set(JSON.parse(localStorage.getItem('chartist_favs') || '[]')) }
+  try { return new Set(JSON.parse(localStorage.getItem('ths_favs') || '[]')) }
   catch { return new Set() }
 }
 function saveFavs(set) {
-  localStorage.setItem('chartist_favs', JSON.stringify([...set]))
+  localStorage.setItem('ths_favs', JSON.stringify([...set]))
 }
 
 // ── Browser bildirimi ────────────────────────────────────────────────────────
@@ -83,6 +99,8 @@ function exportCSV(stocks) {
 }
 
 export default function App() {
+  const [token, setToken]       = useState(getToken)
+  const [username, setUsername] = useState(getUsername)
   const [page, setPage]         = useState('scanner')
   const [cat, setCat]           = useState('BIST30')
   const [stocks, setStocks]     = useState([])
@@ -106,6 +124,16 @@ export default function App() {
   const epochRef  = useRef(0)
   const prevGucluRef = useRef(new Set())  // bildirim için önceki GÜÇLÜ AL seti
   const screenerCacheRef = useRef(null)
+
+  const handleLogin = (t, u) => { setToken(t); setUsername(u) }
+  const handleLogout = () => {
+    localStorage.removeItem('ths_token')
+    localStorage.removeItem('ths_user')
+    setToken(''); setUsername('')
+  }
+
+  // Giriş yapılmamışsa login sayfasını göster
+  if (!token) return <LoginPage onLogin={handleLogin} />
 
   // Bildirim izni iste
   useEffect(() => { requestNotifPerm() }, [])
@@ -321,6 +349,9 @@ export default function App() {
   if (page === 'backtest') {
     return <BacktestPage onBack={() => setPage('scanner')} />
   }
+  if (page === 'users') {
+    return <UsersPage onBack={() => setPage('scanner')} token={token} />
+  }
 
   return (
     <div className="app">
@@ -331,7 +362,7 @@ export default function App() {
         <div className="hdr-left">
           <div className="logo">
             <span className="logo-icon">◈</span>
-            <span className="logo-text">CHARTIST</span>
+            <span className="logo-text">THS</span>
             <span className="logo-sub">AI Terminal</span>
           </div>
           <div className="scan-info">
@@ -488,6 +519,13 @@ export default function App() {
           <button className="backtest-nav-btn" onClick={() => setPage('backtest')}>
             ⚗ Backtest
           </button>
+          <button className="users-nav-btn" onClick={() => setPage('users')} title="Kullanıcı Yönetimi">
+            👥
+          </button>
+          <div className="user-info">
+            <span className="user-name">{username}</span>
+            <button className="logout-btn" onClick={handleLogout} title="Çıkış yap">⏻</button>
+          </div>
         </div>
       </header>
 

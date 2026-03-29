@@ -478,7 +478,7 @@ export default function DetailPage({ stock, onClose }) {
                 {/* Genel AI */}
                 <div className="dp-ai-final">
                   <div className="dp-ai-hdr">
-                    <span>◈ CHARTIST AI — Genel Değerlendirme</span>
+                    <span>◈ THS AI — Genel Değerlendirme</span>
                     <span className="dp-ai-score" style={{color:scoreColor}}>{ai_score} / 10</span>
                   </div>
                   <button className={`dp-act-btn ${actCls}`}>{ai_action}</button>

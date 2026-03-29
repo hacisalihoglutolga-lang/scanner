@@ -188,7 +188,7 @@ export default function StockCard({ stock, onDetail, isFav, onToggleFav }) {
       {/* AI Analiz — çok zaman dilimi */}
       <div className="ai-box">
         <div className="ai-hdr">
-          <span className="ai-title">◈ CHARTIST AI Analizi</span>
+          <span className="ai-title">◈ THS AI Analizi</span>
           <span className="ai-score" style={{color:scoreColor(ai_score),borderColor:scoreColor(ai_score)}}>
             Genel: {ai_score}
           </span>

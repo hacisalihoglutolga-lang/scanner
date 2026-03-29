@@ -75,7 +75,7 @@ export default function PortfolioPage({ onBack, onTickerClick }) {
         <div className="pp-hdr-left">
           <button className="pp-back-btn" onClick={onBack}>← Tarayıcı</button>
           <div className="pp-title-wrap">
-            <span className="pp-logo">◈ CHARTIST</span>
+            <span className="pp-logo">◈ THS</span>
             <span className="pp-subtitle">Portföy Analiz Terminali</span>
           </div>
         </div>
