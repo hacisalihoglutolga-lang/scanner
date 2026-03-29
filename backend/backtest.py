@@ -75,7 +75,7 @@ def _download_history(ticker: str, force: bool = False) -> dict | None:
 
     yf_t = ticker + ".IS"
     try:
-        t = yf.Ticker(yf_t, session=_session)
+        t = yf.Ticker(yf_t)
         data = {
             "1d":  t.history(period="3y",  interval="1d",  auto_adjust=True),
             "1w":  t.history(period="5y",  interval="1wk", auto_adjust=True),
@@ -168,7 +168,7 @@ def _bist100_regime(signal_date) -> str:
     global _bist100_cache
     if not _bist100_cache or time.time() - _bist100_cache.get("ts", 0) > 86400:
         try:
-            t = yf.Ticker("XU100.IS", session=_session)
+            t = yf.Ticker("XU100.IS")
             df = t.history(period="3y", interval="1d", auto_adjust=True)
             _bist100_cache = {"data": df, "ts": time.time()}
         except Exception:

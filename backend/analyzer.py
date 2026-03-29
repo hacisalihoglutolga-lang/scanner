@@ -9,17 +9,10 @@ import warnings
 import time
 import random
 import threading
-import requests
 warnings.filterwarnings("ignore")
 
-# ─── yfinance için browser User-Agent (datacenter IP bloğunu aşar) ───────────
-_yf_session = requests.Session()
-_yf_session.headers.update({
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.5",
-})
-yf.set_tz_cache_location("/tmp/yfinance_tz")
+# yfinance 1.x kendi session'ını yönetiyor
+_yf_session = None
 
 # ─── Global Rate-Limit Bekleme ───────────────────────────────────────────────
 # Rate limit algılandığında tüm thread'ler bu event'i bekler.
@@ -1349,7 +1342,7 @@ def _whale_signals(df_1d: pd.DataFrame, df_1h=None) -> dict:
 def analyze_stock(ticker: str) -> dict | None:
     yf_t = ticker + ".IS"
     try:
-        t_obj = yf.Ticker(yf_t, session=_yf_session)
+        t_obj = yf.Ticker(yf_t)
         df_1d = _yf_history(t_obj, period="6mo",  interval="1d",  auto_adjust=True)
         df_1h = _yf_history(t_obj, period="60d",  interval="1h",  auto_adjust=True)
         df_1w = _yf_history(t_obj, period="2y",   interval="1wk", auto_adjust=True)

@@ -61,7 +61,7 @@ def _fetch_fund(ticker: str, main_cache: dict | None = None) -> dict | None:
 
     # 3. Yfinance hafif çekimi
     try:
-        info = yf.Ticker(f"{ticker}.IS", session=_session).info or {}
+        info = yf.Ticker(f"{ticker}.IS").info or {}
         price = info.get("currentPrice") or info.get("regularMarketPrice")
         if not price:
             return None
