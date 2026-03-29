@@ -297,26 +297,24 @@ async def scan_stream(category: str = "BIST30", limit: int = 1000, force: bool =
             _skip_cache.pop(t, None)
 
     out = []
-    stale = []
     now = time.time()
-    pending = []   # not yet started
+    pending = []   # not yet started / still waiting
     for t in stocks:
         if t in _delisted:
             continue
         if _skip_cache.get(t, 0) > now:
+            pending.append(t)   # rate-limited/geçici hata — skip süresi dolunca tekrar denenecek
             continue
         cached = _cached(t)
         if cached:
             out.append(cached)
-        elif t in _in_progress:
-            pending.append(t)   # already running — still pending from frontend's view
         else:
-            pending.append(t)   # not started yet
+            pending.append(t)   # in_progress veya başlamamış
 
-    # Start background fetch only for tickers not already in progress
-    new_stale = [t for t in pending if t not in _in_progress]
-    if new_stale:
-        asyncio.create_task(_refresh_batch(new_stale))
+    # Start background fetch only for tickers not already in progress and not in skip_cache
+    to_fetch = [t for t in pending if t not in _in_progress and _skip_cache.get(t, 0) <= now]
+    if to_fetch:
+        asyncio.create_task(_refresh_batch(to_fetch))
 
     _ACT_ORD   = {"GÜÇLÜ AL": 0, "AL": 1, "İZLE": 2, "ZAYIF": 3, "SAT": 4}
     _SETUP_ORD = {"KIRILIM": 0, "DÖNÜŞ": 1, "STANDART": 2}
