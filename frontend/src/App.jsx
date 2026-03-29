@@ -165,17 +165,18 @@ export default function App() {
     finally { setSearchLoading(false) }
   }, [stocks])
 
-  const doFetch = useCallback(async (c = cat) => {
+  const doFetch = useCallback(async (c = cat, force = false) => {
     const myEpoch = ++epochRef.current
     setScanning(true)
     setStocks([])
     setLoading(true)
     setPending([])
 
-    const poll = async () => {
+    const poll = async (isFirst = false) => {
       if (epochRef.current !== myEpoch) return
       try {
-        const res  = await fetch(`/api/scan/stream?category=${encodeURIComponent(c)}&limit=1000`)
+        const forceParam = force && isFirst ? '&force=true' : ''
+        const res  = await fetch(`/api/scan/stream?category=${encodeURIComponent(c)}&limit=1000${forceParam}`)
         const data = await res.json()
         if (epochRef.current !== myEpoch) return
         if (data.stocks?.length > 0) { setStocks(data.stocks); setLastScan(new Date()) }
@@ -190,7 +191,7 @@ export default function App() {
         }
       } catch (e) { console.error(e); setScanning(false); setLoading(false) }
     }
-    poll()
+    poll(true)
   }, [cat])
 
   // Manuel mod — sayfa açılışında otomatik tarama yok
@@ -455,7 +456,7 @@ export default function App() {
             ))}
           </div>
 
-          <button className="refresh-btn" onClick={() => doFetch()} disabled={scanning}>
+          <button className="refresh-btn" onClick={() => doFetch(cat, true)} disabled={scanning}>
             {scanning ? '⟳' : '↺'} Tara
           </button>
 
