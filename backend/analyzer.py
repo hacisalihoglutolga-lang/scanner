@@ -28,7 +28,7 @@ class _RateLimited(Exception):
 def _check_rate_limit():
     """Rate limit aktifse hemen exception — thread'i uyutma."""
     if _rl_until > time.time():
-        raise _RateLimited()
+        raise _RateLimited("rate-limited")
 
 def _set_rate_limit(wait_sec: float = 45.0):
     """Rate limit algılandı."""
@@ -53,7 +53,7 @@ def _yf_history(ticker_obj, **kwargs):
         msg = str(e).lower()
         if "too many requests" in msg or "rate limit" in msg or "429" in msg:
             _set_rate_limit(45.0)
-            raise _RateLimited()
+            raise _RateLimited("rate-limited")
         raise
 
 

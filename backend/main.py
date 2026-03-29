@@ -209,7 +209,7 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
                 _in_progress.discard(ticker)
                 return None
 
-        if result and not result.get("error"):
+        if result and result.get("error") is None:
             result = _sanitize(result)
             _cache[ticker] = result
             _cache_time[ticker] = time.time()
@@ -234,7 +234,7 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
                     )
                 except Exception:
                     pass
-        elif result and result.get("error"):
+        elif result and result.get("error") is not None:
             err = result.get("error", "").lower()
             # Sadece kesin delisted ifadesinde kalıcı blacklist yap
             if "delisted" in err and "may be" not in err:
@@ -316,7 +316,7 @@ async def scan_stream(category: str = "BIST30", limit: int = 1000, force: bool =
             pending.append(t)   # rate-limited/geçici hata — skip süresi dolunca tekrar denenecek
             continue
         cached = _cached(t)
-        if cached:
+        if cached and cached.get("error") is None:
             out.append(cached)
         else:
             pending.append(t)   # in_progress veya başlamamış
