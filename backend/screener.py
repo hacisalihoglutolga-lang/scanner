@@ -7,6 +7,10 @@ import yfinance as yf
 import time
 
 from stocks import CATEGORIES
+try:
+    from analyzer import _yf_session as _session
+except ImportError:
+    _session = None
 
 _fund_cache: dict = {}
 _fund_time: dict = {}
@@ -57,7 +61,7 @@ def _fetch_fund(ticker: str, main_cache: dict | None = None) -> dict | None:
 
     # 3. Yfinance hafif çekimi
     try:
-        info = yf.Ticker(f"{ticker}.IS").info or {}
+        info = yf.Ticker(f"{ticker}.IS", session=_session).info or {}
         price = info.get("currentPrice") or info.get("regularMarketPrice")
         if not price:
             return None

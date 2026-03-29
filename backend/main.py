@@ -261,7 +261,8 @@ async def get_ohlcv(ticker: str, days: int = 180, interval: str = "1d"):
     def _fetch():
         try:
             import yfinance as yf
-            t = yf.Ticker(f"{ticker.upper()}.IS")
+            from analyzer import _yf_session
+            t = yf.Ticker(f"{ticker.upper()}.IS", session=_yf_session)
             yf_interval = {"1h": "1h", "4h": "1h", "1d": "1d", "1wk": "1wk"}.get(interval, "1d")
             actual_days = min(days, 59) if interval in ("1h", "4h") else days
             df = t.history(period=f"{actual_days}d", interval=yf_interval)

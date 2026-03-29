@@ -7,12 +7,13 @@ import yfinance as yf
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Global rate-limit mekanizması (analyzer.py ile paylaşılır)
+# Global rate-limit + session (analyzer.py ile paylaşılır)
 try:
-    from analyzer import _wait_if_rate_limited, _set_rate_limit
+    from analyzer import _wait_if_rate_limited, _set_rate_limit, _yf_session as _session
 except ImportError:
     def _wait_if_rate_limited(): pass
     def _set_rate_limit(w=60.0): pass
+    _session = None
 
 _pat_cache: dict = {}
 _pat_time: dict = {}
