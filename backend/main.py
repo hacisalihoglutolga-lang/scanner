@@ -379,6 +379,7 @@ async def get_ohlcv(ticker: str, days: int = 180, interval: str = "1d"):
     def _fetch():
         try:
             import yfinance as yf
+            _analyzer._check_rate_limit()
             t = yf.Ticker(f"{ticker.upper()}.IS")
             yf_interval = {"1h": "1h", "4h": "1h", "1d": "1d", "1wk": "1wk"}.get(interval, "1d")
             actual_days = min(days, 59) if interval in ("1h", "4h") else days
@@ -400,6 +401,8 @@ async def get_ohlcv(ticker: str, days: int = 180, interval: str = "1d"):
                     "volume": int(row["Volume"]),
                 })
             return out
+        except _analyzer._RateLimited:
+            return {"__error__": "rate_limit"}
         except Exception as e:
             err = str(e).lower()
             if "rate limit" in err or "too many" in err or "429" in err:
