@@ -230,6 +230,9 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
             if "delisted" in err and "may be" not in err:
                 _delisted.add(ticker)
                 _save_delisted(_delisted)
+            elif "rate-limited" in err:
+                # Rate limit — kısa bekleme (30s), sonra tekrar dene
+                _skip_cache[ticker] = time.time() + 30
             else:
                 # Geçici hata — 2 dakika sonra tekrar dene
                 _skip_cache[ticker] = time.time() + SKIP_TTL

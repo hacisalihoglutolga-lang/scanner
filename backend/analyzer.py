@@ -9,25 +9,30 @@ import warnings
 import time
 import random
 import threading
+import socket
 warnings.filterwarnings("ignore")
+
+# Tüm socket işlemlerine global timeout — asılı kalan bağlantıları önler
+socket.setdefaulttimeout(20)
 
 # yfinance 1.x kendi session'ını yönetiyor
 _yf_session = None
 
 # ─── Global Rate-Limit Bekleme ───────────────────────────────────────────────
-# Rate limit algılandığında tüm thread'ler bu event'i bekler.
 _rl_lock   = threading.Lock()
-_rl_until  = 0.0          # Unix timestamp — bu zamana kadar bekle
+_rl_until  = 0.0          # Unix timestamp
+
+class _RateLimited(Exception):
+    """Rate limit aktifken hızlı çıkış — thread'i uyutma."""
+    pass
 
 def _wait_if_rate_limited():
-    """Rate limit varsa bekle."""
-    global _rl_until
-    now = time.time()
-    if _rl_until > now:
-        time.sleep(_rl_until - now + random.uniform(0.5, 2.0))
+    """Rate limit varsa uyuma, hemen exception fırlat."""
+    if _rl_until > time.time():
+        raise _RateLimited("rate-limited")
 
-def _set_rate_limit(wait_sec: float = 60.0):
-    """Rate limit algılandı — tüm işçiler bekleyecek."""
+def _set_rate_limit(wait_sec: float = 30.0):
+    """Rate limit algılandı."""
     global _rl_until
     with _rl_lock:
         new_until = time.time() + wait_sec
@@ -36,22 +41,21 @@ def _set_rate_limit(wait_sec: float = 60.0):
 
 
 def _yf_history(ticker_obj, **kwargs):
-    """yfinance history çağrısını rate limit'e karşı retry ile sarmalar."""
-    for attempt in range(3):
-        _wait_if_rate_limited()
-        try:
-            df = ticker_obj.history(**kwargs)
-            if df is not None and not df.empty:
-                return df
+    """yfinance history çağrısını rate limit'e karşı sarmalar."""
+    _wait_if_rate_limited()   # rate limit aktifse hemen çık
+    try:
+        df = ticker_obj.history(**kwargs)
+        if df is not None and not df.empty:
             return df
-        except Exception as e:
-            msg = str(e).lower()
-            if "too many requests" in msg or "rate limit" in msg or "429" in msg:
-                wait_sec = 20.0 if attempt == 0 else 10.0 * attempt
-                _set_rate_limit(wait_sec)
-            else:
-                raise
-    return ticker_obj.history(**kwargs)
+        return df
+    except _RateLimited:
+        raise
+    except Exception as e:
+        msg = str(e).lower()
+        if "too many requests" in msg or "rate limit" in msg or "429" in msg:
+            _set_rate_limit(30.0)
+            raise _RateLimited("rate-limited: " + str(e))
+        raise
 
 
 # ─── Temel Göstergeler ────────────────────────────────────────────────────────
