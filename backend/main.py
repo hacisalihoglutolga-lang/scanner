@@ -9,6 +9,7 @@ import time
 import math
 import json
 import os
+import analyzer as _analyzer
 from analyzer import analyze_stock
 from stocks import CATEGORIES
 from database import init_db, save_signal, get_recent_signals
@@ -240,7 +241,8 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
                 _delisted.add(ticker)
                 _save_delisted(_delisted)
             elif "rate-limited" in err:
-                _skip_cache[ticker] = time.time() + 5
+                # _rl_until dolunca yeniden dene (rate limit bittikten hemen sonra)
+                _skip_cache[ticker] = max(_analyzer._rl_until + 1.0, time.time() + 5)
             else:
                 # Geçici hata — 2 dakika sonra tekrar dene
                 _skip_cache[ticker] = time.time() + SKIP_TTL

@@ -22,42 +22,38 @@ _yf_session = None
 _rl_lock   = threading.Lock()
 _rl_until  = 0.0          # Unix timestamp
 
-def _wait_if_rate_limited():
-    """Rate limit varsa bekle — küçük parçalara bölerek uyku."""
-    global _rl_until
-    deadline = _rl_until
-    if deadline <= time.time():
-        return
-    # 1'er saniyelik dilimler halinde bekle — toplam max 25s
-    elapsed = 0
-    while time.time() < deadline and elapsed < 25:
-        time.sleep(1.0)
-        elapsed += 1
+class _RateLimited(Exception):
+    pass
 
-def _set_rate_limit(wait_sec: float = 20.0):
+def _check_rate_limit():
+    """Rate limit aktifse hemen exception — thread'i uyutma."""
+    if _rl_until > time.time():
+        raise _RateLimited()
+
+def _set_rate_limit(wait_sec: float = 45.0):
     """Rate limit algılandı."""
     global _rl_until
     with _rl_lock:
-        new_until = time.time() + min(wait_sec, 25.0)
+        new_until = time.time() + wait_sec
         if new_until > _rl_until:
             _rl_until = new_until
 
 
 def _yf_history(ticker_obj, **kwargs):
-    """yfinance history çağrısını rate limit'e karşı retry ile sarmalar."""
-    _wait_if_rate_limited()
+    """yfinance history çağrısını rate limit'e karşı sarmalar."""
+    _check_rate_limit()
     try:
         df = ticker_obj.history(**kwargs)
         if df is not None and not df.empty:
             return df
         return df
+    except _RateLimited:
+        raise
     except Exception as e:
         msg = str(e).lower()
         if "too many requests" in msg or "rate limit" in msg or "429" in msg:
-            _set_rate_limit(15.0)
-            # bir kez daha dene
-            _wait_if_rate_limited()
-            return ticker_obj.history(**kwargs)
+            _set_rate_limit(45.0)
+            raise _RateLimited()
         raise
 
 
