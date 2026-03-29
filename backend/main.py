@@ -101,10 +101,10 @@ _in_progress: set = set()
 
 # Temporarily skip cache for non-delisted failures
 _skip_cache: dict = {}  # ticker -> expiry timestamp
-_fail_count: dict = {}  # ticker -> toplam başarısız deneme sayısı
-SKIP_TTL = 15           # genel hata: 15s — hızlı yeniden dene
-TIMEOUT_SKIP_TTL = 20   # asyncio timeout: 20s
-MAX_FAILS = 2           # 2 başarısız denemeden sonra kalıcı atla
+_timeout_count: dict = {}  # ticker -> asyncio timeout sayısı (gerçek takılma)
+SKIP_TTL = 45           # genel hata: 45s
+TIMEOUT_SKIP_TTL = 25   # asyncio timeout: 25s
+MAX_TIMEOUTS = 4        # 4 kez gerçek timeout → kalıcı atla
 
 
 def _safe_analyze(ticker: str) -> dict | None:
@@ -112,8 +112,11 @@ def _safe_analyze(ticker: str) -> dict | None:
 
 @app.on_event("startup")
 async def startup():
-    global _yf_semaphore
+    global _yf_semaphore, _delisted
     _yf_semaphore = asyncio.Semaphore(8)
+    # delisted.json'u sıfırla — geçici network hatalarıyla yanlış blacklist'e girenler temizlensin
+    _delisted = set()
+    _save_delisted(_delisted)
     init_db()
     init_users_db()
 
@@ -196,12 +199,12 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
             try:
                 result = await asyncio.wait_for(
                     loop.run_in_executor(executor, _safe_analyze, ticker),
-                    timeout=40.0
+                    timeout=50.0
                 )
             except asyncio.TimeoutError:
-                cnt = _fail_count.get(ticker, 0) + 1
-                _fail_count[ticker] = cnt
-                if cnt >= MAX_FAILS:
+                cnt = _timeout_count.get(ticker, 0) + 1
+                _timeout_count[ticker] = cnt
+                if cnt >= MAX_TIMEOUTS:
                     _delisted.add(ticker)
                     _save_delisted(_delisted)
                 else:
@@ -210,7 +213,7 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
                 return None
 
         if result and result.get("error") is None:
-            _fail_count.pop(ticker, None)  # başarılıysa sayacı sıfırla
+            _timeout_count.pop(ticker, None)  # başarılıysa sayacı sıfırla
             result = _sanitize(result)
             _cache[ticker] = result
             _cache_time[ticker] = time.time()
@@ -243,13 +246,8 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
             elif "rate-limited" in err:
                 _skip_cache[ticker] = max(_analyzer._rl_until + 1.0, time.time() + 5)
             else:
-                cnt = _fail_count.get(ticker, 0) + 1
-                _fail_count[ticker] = cnt
-                if cnt >= MAX_FAILS:
-                    _delisted.add(ticker)
-                    _save_delisted(_delisted)
-                else:
-                    _skip_cache[ticker] = time.time() + SKIP_TTL
+                # Geçici hata — kalıcı blacklist yapma, sadece skip
+                _skip_cache[ticker] = time.time() + SKIP_TTL
 
         return result
     finally:
