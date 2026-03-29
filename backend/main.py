@@ -73,7 +73,7 @@ _cache: dict = {}
 _cache_time: dict = {}
 CACHE_TTL = 1800  # 30 minutes
 
-executor = ThreadPoolExecutor(max_workers=4)
+executor = ThreadPoolExecutor(max_workers=20)  # thread'ler asılsa bile yeni iş alabilsin
 _yf_semaphore: asyncio.Semaphore | None = None
 
 # Permanently delisted tickers — never queried again
@@ -196,6 +196,7 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
                 )
             except asyncio.TimeoutError:
                 _skip_cache[ticker] = time.time() + SKIP_TTL
+                _in_progress.discard(ticker)
                 return None
 
         if result and not result.get("error"):
