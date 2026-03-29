@@ -168,7 +168,7 @@ export default function App() {
   const doFetch = useCallback(async (c = cat, force = false) => {
     const myEpoch = ++epochRef.current
     setScanning(true)
-    setStocks([])
+    if (force) setStocks([])  // Sadece force=true'da kartları temizle
     setLoading(true)
     setPending([])
 
@@ -504,7 +504,7 @@ export default function App() {
 
       {/* ── Kartlar ── */}
       <main className="cards-wrap">
-        {loading ? (
+        {loading && stocks.length === 0 ? (
           <div className="loading-screen">
             <div className="spinner"/>
             <p>BİST hisseleri analiz ediliyor…</p>
