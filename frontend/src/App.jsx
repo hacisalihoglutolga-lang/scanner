@@ -98,9 +98,23 @@ function exportCSV(stocks) {
   URL.revokeObjectURL(url)
 }
 
-export default function App() {
+// ── Auth wrapper — login kontrolünü hook'lardan önce ayır ────────────────────
+export default function AppRoot() {
   const [token, setToken]       = useState(getToken)
   const [username, setUsername] = useState(getUsername)
+
+  const handleLogin = (t, u) => { setToken(t); setUsername(u) }
+  const handleLogout = () => {
+    localStorage.removeItem('ths_token')
+    localStorage.removeItem('ths_user')
+    setToken(''); setUsername('')
+  }
+
+  if (!token) return <LoginPage onLogin={handleLogin} />
+  return <App token={token} username={username} onLogout={handleLogout} />
+}
+
+function App({ token, username, onLogout }) {
   const [page, setPage]         = useState('scanner')
   const [cat, setCat]           = useState('BIST30')
   const [stocks, setStocks]     = useState([])
@@ -124,16 +138,6 @@ export default function App() {
   const epochRef  = useRef(0)
   const prevGucluRef = useRef(new Set())  // bildirim için önceki GÜÇLÜ AL seti
   const screenerCacheRef = useRef(null)
-
-  const handleLogin = (t, u) => { setToken(t); setUsername(u) }
-  const handleLogout = () => {
-    localStorage.removeItem('ths_token')
-    localStorage.removeItem('ths_user')
-    setToken(''); setUsername('')
-  }
-
-  // Giriş yapılmamışsa login sayfasını göster
-  if (!token) return <LoginPage onLogin={handleLogin} />
 
   // Bildirim izni iste
   useEffect(() => { requestNotifPerm() }, [])
@@ -524,7 +528,7 @@ export default function App() {
           </button>
           <div className="user-info">
             <span className="user-name">{username}</span>
-            <button className="logout-btn" onClick={handleLogout} title="Çıkış yap">⏻</button>
+            <button className="logout-btn" onClick={onLogout} title="Çıkış yap">⏻</button>
           </div>
         </div>
       </header>
