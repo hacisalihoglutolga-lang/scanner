@@ -332,6 +332,22 @@ async def _refresh_batch(tickers: list[str]):
     await asyncio.gather(*tasks, return_exceptions=True)
 
 
+@app.get("/api/debug/test")
+async def debug_test():
+    """Tek bir hisse çek, ne döndüğünü göster."""
+    loop = asyncio.get_event_loop()
+    try:
+        result = await asyncio.wait_for(
+            loop.run_in_executor(executor, _safe_analyze, "THYAO"),
+            timeout=35.0
+        )
+        return {"ok": True, "result": _sanitize(result)}
+    except asyncio.TimeoutError:
+        return {"ok": False, "error": "timeout (35s)"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 @app.get("/api/stocks")
 async def list_stocks():
     return {"categories": {k: v for k, v in CATEGORIES.items()}}
