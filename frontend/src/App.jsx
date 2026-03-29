@@ -363,6 +363,7 @@ function App({ token, username, isAdmin, onLogout }) {
     gucluAl:  filtered.filter(s => s.ai_action === 'GÜÇLÜ AL').length,
     al:        filtered.filter(s => s.ai_action === 'AL').length,
     izle:      filtered.filter(s => s.ai_action === 'İZLE').length,
+    zayif:     filtered.filter(s => s.ai_action === 'ZAYIF').length,
     sat:       filtered.filter(s => s.ai_action === 'SAT').length,
     boga:      filtered.filter(s => s.trend === 'BOĞA').length,
   }
@@ -582,6 +583,7 @@ function App({ token, username, isAdmin, onLogout }) {
         <StatBadge label="Güçlü Al" val={stats.gucluAl} cls="amber" />
         <StatBadge label="Al"        val={stats.al}      cls="green" />
         <StatBadge label="İzle"      val={stats.izle}    cls="blue" />
+        <StatBadge label="Zayıf"     val={stats.zayif}   cls="orange" />
         <StatBadge label="Sat"       val={stats.sat}     cls="red" />
         <StatBadge label="Boğa Trendi" val={stats.boga} cls="teal" />
         {favs.size > 0 && <StatBadge label="Favoriler" val={favs.size} cls="amber" />}
