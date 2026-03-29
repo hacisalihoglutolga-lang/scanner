@@ -98,9 +98,11 @@ _delisted: set = _load_delisted()
 # Tracks tickers currently being fetched — prevents duplicate concurrent fetches
 _in_progress: set = set()
 
-# Temporarily skip cache for non-delisted failures (10 min)
-_skip_cache: dict = {}  # ticker -> expiry timestamp
-SKIP_TTL = 120  # 2 dakika — rate limit sonrası hızlı yeniden dene
+# Temporarily skip cache for non-delisted failures
+_skip_cache: dict = {}   # ticker -> expiry timestamp
+_timeout_count: dict = {}  # ticker -> kaç kez timeout yedi
+SKIP_TTL = 60            # genel hata: 60s
+TIMEOUT_SKIP_TTL = 30    # timeout: 30s — daha hızlı yeniden dene
 
 
 def _safe_analyze(ticker: str) -> dict | None:
@@ -195,7 +197,14 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
                     timeout=60.0
                 )
             except asyncio.TimeoutError:
-                _skip_cache[ticker] = time.time() + SKIP_TTL
+                cnt = _timeout_count.get(ticker, 0) + 1
+                _timeout_count[ticker] = cnt
+                if cnt >= 3:
+                    # 3 kez timeout → kalıcı atla
+                    _delisted.add(ticker)
+                    _save_delisted(_delisted)
+                else:
+                    _skip_cache[ticker] = time.time() + TIMEOUT_SKIP_TTL
                 _in_progress.discard(ticker)
                 return None
 
