@@ -43,6 +43,14 @@ const SETUP_ORDER  = { 'KIRILIM': 0, 'DÖNÜŞ': 1, 'STANDART': 2 }
 // ── Auth yardımcıları ─────────────────────────────────────────────────────────
 function getToken()    { return localStorage.getItem('ths_token') || '' }
 function getUsername() { return localStorage.getItem('ths_user')  || '' }
+function getIsAdmin()  {
+  try {
+    const token = getToken()
+    if (!token) return false
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return !!payload.admin
+  } catch { return false }
+}
 
 // Tüm API isteklerine otomatik token ekle
 const _origFetch = window.fetch
@@ -111,10 +119,10 @@ export default function AppRoot() {
   }
 
   if (!token) return <LoginPage onLogin={handleLogin} />
-  return <App token={token} username={username} onLogout={handleLogout} />
+  return <App token={token} username={username} isAdmin={getIsAdmin()} onLogout={handleLogout} />
 }
 
-function App({ token, username, onLogout }) {
+function App({ token, username, isAdmin, onLogout }) {
   const [page, setPage]         = useState('scanner')
   const [cat, setCat]           = useState('BIST30')
   const [stocks, setStocks]     = useState([])
@@ -523,9 +531,11 @@ function App({ token, username, onLogout }) {
           <button className="backtest-nav-btn" onClick={() => setPage('backtest')}>
             ⚗ Backtest
           </button>
-          <button className="users-nav-btn" onClick={() => setPage('users')} title="Kullanıcı Yönetimi">
-            👥
-          </button>
+          {isAdmin && (
+            <button className="users-nav-btn" onClick={() => setPage('users')} title="Kullanıcı Yönetimi">
+              👥
+            </button>
+          )}
           <div className="user-info">
             <span className="user-name">{username}</span>
             <button className="logout-btn" onClick={onLogout} title="Çıkış yap">⏻</button>
