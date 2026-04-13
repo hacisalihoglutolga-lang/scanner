@@ -515,7 +515,7 @@ async def run_backtest(body: dict):
 
     def _run():
         global _bt_progress
-        _bt_progress = {"done": 0, "total": len(tickers), "current": "", "running": True}
+        _bt_progress = {"done": 0, "total": len(tickers), "current": "", "running": True, "error": ""}
 
         def _cb(done, total, ticker):
             _bt_progress["done"]    = done
@@ -528,6 +528,13 @@ async def run_backtest(body: dict):
                                        fresh_signals_only=fresh_only,
                                        market_filter=market_filter)
             save_results(results)
+            print(f"[backtest] Tamamlandı: {len(results)} sinyal, {len(tickers)} hisse")
+            if len(results) == 0:
+                _bt_progress["error"] = "Veri indirilemedi — yfinance bağlantısı kontrol edin"
+        except Exception as e:
+            import traceback
+            print(f"[backtest] KRİTİK HATA: {e}\n{traceback.format_exc()}")
+            _bt_progress["error"] = str(e)
         finally:
             _bt_progress["running"] = False
             _bt_progress["current"] = ""

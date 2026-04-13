@@ -97,8 +97,12 @@ export default function BacktestPage({ onBack }) {
           clearInterval(pollRef.current)
           setLoading(false)
           await fetchStats()
-          setMsg('Backtest tamamlandı!')
-          setTimeout(() => setMsg(''), 4000)
+          if (p.error) {
+            setMsg(`Hata: ${p.error}`)
+          } else {
+            setMsg('Backtest tamamlandı!')
+            setTimeout(() => setMsg(''), 4000)
+          }
         }
       } catch {}
     }, 2000)

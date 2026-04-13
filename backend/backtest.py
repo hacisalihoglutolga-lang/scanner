@@ -13,6 +13,7 @@ import numpy as np
 import os
 import json
 import pickle
+import logging
 try:
     from analyzer import _yf_session as _session
 except ImportError:
@@ -20,6 +21,8 @@ except ImportError:
 import time
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+_log = logging.getLogger("backtest")
 
 from analyzer import _analyze_tf, _rsi, _macd, _ema, _atr
 
@@ -83,6 +86,8 @@ def _download_history(ticker: str, force: bool = False) -> dict | None:
         }
         # Boş kontrolü
         if data["1d"] is None or len(data["1d"]) < 50:
+            _log.warning("[bt] %s: 1d veri boş/yetersiz (%s satır)",
+                         ticker, len(data["1d"]) if data["1d"] is not None else 0)
             return None
 
         # Gereksiz kolonları temizle
@@ -95,7 +100,8 @@ def _download_history(ticker: str, force: bool = False) -> dict | None:
         with open(path, "wb") as f:
             pickle.dump(data, f)
         return data
-    except Exception:
+    except Exception as e:
+        _log.error("[bt] %s veri indirme hatası: %s", ticker, e)
         return None
 
 
