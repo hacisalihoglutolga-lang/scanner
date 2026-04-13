@@ -24,7 +24,13 @@ export default function PerformancePage({ onBack, onTickerClick }) {
   useEffect(() => {
     setLoading(true)
     fetch('/api/signal-performance')
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) {
+          const txt = await r.text()
+          throw new Error(`Sunucu hatası (${r.status}): ${txt.slice(0, 120)}`)
+        }
+        return r.json()
+      })
       .then(d => { setData(d); setLoading(false) })
       .catch(e => { setError(e.message); setLoading(false) })
   }, [])

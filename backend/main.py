@@ -627,7 +627,7 @@ async def signal_performance():
         return _perf_cache["data"]
 
     loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(_executor, _compute_signal_performance)
+    result = await loop.run_in_executor(executor, _compute_signal_performance)
     _perf_cache["data"] = result
     _perf_cache["ts"] = now
     return result
