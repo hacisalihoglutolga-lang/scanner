@@ -79,6 +79,11 @@ def _atr(h, l, c, p=14):
     tr = pd.concat([(h-l), (h-c.shift()).abs(), (l-c.shift()).abs()], axis=1).max(axis=1)
     return tr.rolling(p).mean()
 
+def _bollinger(c, p=20, std=2.0):
+    ma = c.rolling(p).mean()
+    s  = c.rolling(p).std(ddof=0)
+    return float(ma.iloc[-1]), float((ma + std*s).iloc[-1]), float((ma - std*s).iloc[-1])
+
 
 # ─── Swing Noktaları ──────────────────────────────────────────────────────────
 
@@ -383,7 +388,7 @@ def _spot_sltp(price, atr, bull_ob, bull_fvg, supports):
     else:
         sl = round(price - atr * 1.5, 2)
 
-    sl    = max(sl, round(price * 0.92, 2))      # max %8 stop
+    sl    = max(sl, round(price * 0.90, 2))      # max %10 stop
     risk  = max(price - sl, price * 0.02)
 
     tp1 = round(price + risk * 1.5, 2)
@@ -456,7 +461,7 @@ def _analyze_tf(df, tf_name: str, tf_type: str = "1d") -> dict | None:
     elif sl and cur < float(l.iloc[sl[-1]]):
         bos = "Düşüş BOS"
 
-    lb = min(50, len(df))
+    lb = min(200, len(df))
     ph = float(h.iloc[-lb:].max())
     pl = float(l.iloc[-lb:].min())
     zone_pct  = (cur - pl) / (ph - pl) if ph != pl else 0.5
@@ -579,7 +584,7 @@ def _analyze_tf(df, tf_name: str, tf_type: str = "1d") -> dict | None:
         elif 30 <= rsi_val < 40:
             score += 6;  reasons.append(f"RSI aşırı satım yakını ({rsi_val})")
         elif rsi_val < 30:
-            score += 4;  reasons.append(f"RSI aşırı satım ({rsi_val})")
+            score += 8;  reasons.append(f"RSI aşırı satım — dönüş fırsatı ({rsi_val}) ✓")
         elif rsi_val > 70:
             score -= 4;  reasons.append(f"RSI aşırı alım ({rsi_val}) ⚠")
 
@@ -596,6 +601,12 @@ def _analyze_tf(df, tf_name: str, tf_type: str = "1d") -> dict | None:
             score += 4; reasons.append("EMA200 üzerinde ✓")
         elif ema200 and cur < ema200:
             score -= 2; reasons.append("EMA200 altında ⚠")
+
+        # EMA8 / EMA20 hizalanması — kısa vadeli trend yönü
+        if ma8 > ma20 * 1.001:
+            score += 5; reasons.append("EMA8 > EMA20 — kısa vade hizalı ✓")
+        elif ma8 < ma20 * 0.999:
+            score -= 3; reasons.append("EMA8 < EMA20 — kısa vade negatif ⚠")
 
         if vol_state == "YUKSEK" and up_bar:
             score += 7; reasons.append("Yüksek hacimli yükseliş ✓")
@@ -615,7 +626,7 @@ def _analyze_tf(df, tf_name: str, tf_type: str = "1d") -> dict | None:
         if len(c) >= 6:
             mom_5d = (float(c.iloc[-1]) - float(c.iloc[-6])) / max(float(c.iloc[-6]), 0.001) * 100
             if mom_5d > 5:
-                score += 18; reasons.append(f"Güçlü 5G momentum (+{mom_5d:.1f}%) ✓")
+                score += 12; reasons.append(f"Güçlü 5G momentum (+{mom_5d:.1f}%) ✓")
             elif mom_5d > 2:
                 score += 10; reasons.append(f"Pozitif 5G momentum (+{mom_5d:.1f}%) ✓")
             elif mom_5d > 0:
@@ -641,7 +652,19 @@ def _analyze_tf(df, tf_name: str, tf_type: str = "1d") -> dict | None:
             elif mom_20d < -3:
                 score -= 4
 
-        norm = 120  # yeni bileşenlerle normalizer güncellendi
+        # Bollinger Bands — fiyat alt banda yakınsa dönüş fırsatı
+        if len(c) >= 20:
+            bb_mid, bb_up, bb_lo = _bollinger(c)
+            bb_range = bb_up - bb_lo if bb_up != bb_lo else 1
+            bb_pos = (cur - bb_lo) / bb_range  # 0=alt, 1=üst
+            if bb_pos <= 0.15:
+                score += 7; reasons.append(f"Fiyat alt Bollinger bandında — dönüş bölgesi ✓")
+            elif bb_pos <= 0.35:
+                score += 4; reasons.append(f"Alt Bollinger bandına yakın")
+            elif bb_pos >= 0.9:
+                score -= 4; reasons.append(f"Üst Bollinger bandına yapışık — aşırı alım ⚠")
+
+        norm = 115  # BB + EMA hizalama bileşenleri eklendi
 
     tf_score = round(max(0, min(10, score / norm * 10)), 1)
 
@@ -651,9 +674,9 @@ def _analyze_tf(df, tf_name: str, tf_type: str = "1d") -> dict | None:
     setup_type = "STANDART"
     if tf_type in ("1d", "4h"):
         _m5 = (float(c.iloc[-1]) - float(c.iloc[-6])) / max(float(c.iloc[-6]), 0.001) * 100 if len(c) >= 6 else 0
-        if bos == "Yükseliş BOS" and rel_vol >= 1.8 and _m5 > 3:
+        if bos == "Yükseliş BOS" and rel_vol >= 2.0 and _m5 > 3:
             setup_type = "KIRILIM"
-        elif rsi_val is not None and rsi_val < 35 and price_zone == "UCUZ" and vol_state in ("YUKSEK", "NORMAL", "DUSUK"):
+        elif rsi_val is not None and rsi_val < 35 and price_zone == "UCUZ" and vol_state != "KLİMAX":
             setup_type = "DÖNÜŞ"
 
     return {
@@ -679,7 +702,7 @@ def _analyze_tf(df, tf_name: str, tf_type: str = "1d") -> dict | None:
         "candle_patterns": candle_pats,
         "sl": sl_v, "tp1": tp1, "tp2": tp2,
         "risk_pct": risk_pct, "rr": rr,
-        "score": tf_score, "reasons": reasons[:6],
+        "score": tf_score, "reasons": reasons[:8],
         "setup_type": setup_type,
     }
 
