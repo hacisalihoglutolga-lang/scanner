@@ -21,16 +21,15 @@ jobs:
             echo "==> Pulling latest code..."
             git pull origin main
 
-            echo "==> Building frontend..."
-            cd frontend
-            npm ci --silent
-            npm run build
-            cd ..
-
             echo "==> Installing Python deps..."
             backend/venv/bin/pip install -q -r backend/requirements.txt
 
-            echo "==> Restarting service..."
-            sudo systemctl restart bist-scanner
+            echo "==> Fixing permissions..."
+            chown -R www-data:www-data /opt/bist-scanner
 
-            echo "==> Done!"
+            echo "==> Restarting service..."
+            systemctl restart bist-scanner
+
+            echo "==> Waiting for service to start..."
+            sleep 3
+            systemctl is-active bist-scanner && echo "Service is running" || (journalctl -u bist-scanner -n 20 && exit 1)
