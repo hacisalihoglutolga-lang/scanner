@@ -20,7 +20,8 @@ jobs:
             cd /opt/bist-scanner
 
             echo "==> Pulling latest code..."
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
 
             echo "==> Installing Python deps..."
             backend/venv/bin/pip install -q -r backend/requirements.txt
