@@ -113,6 +113,19 @@
 .bt-run-btn:hover:not(:disabled) { background: #2563eb; }
 .bt-run-btn:disabled { opacity: .5; cursor: default; }
 
+.bt-stop-btn {
+  background: #7f1d1d;
+  border: none;
+  color: #fca5a5;
+  padding: 7px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background .15s;
+}
+.bt-stop-btn:hover { background: #991b1b; }
+
 .bt-evolve-btn {
   background: #581c87;
   border: none;

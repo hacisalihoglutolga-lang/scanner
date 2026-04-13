@@ -492,6 +492,17 @@ async def health():
 # ─── Backtest endpoints ───────────────────────────────────────────────────────
 
 _bt_progress: dict = {"done": 0, "total": 0, "current": "", "running": False}
+_bt_cancel_flag = [False]   # mutable flag — thread içinden okunabilir
+
+
+@app.post("/api/backtest/stop")
+async def stop_backtest():
+    """Çalışan backtest'i iptal et (thread bitene kadar kısmen devam edebilir)."""
+    global _bt_progress
+    _bt_cancel_flag[0] = True
+    _bt_progress["running"] = False
+    _bt_progress["current"] = ""
+    return {"message": "İptal sinyali gönderildi"}
 
 
 @app.post("/api/backtest/run")
@@ -514,6 +525,7 @@ async def run_backtest(body: dict):
 
     def _run():
         global _bt_progress
+        _bt_cancel_flag[0] = False
         _bt_progress = {"done": 0, "total": len(tickers), "current": "", "running": True, "error": ""}
 
         def _cb(done, total, ticker):
@@ -525,7 +537,8 @@ async def run_backtest(body: dict):
             results = backtest_tickers(tickers, lookback_days, step_days,
                                        max_workers=3, progress_cb=_cb,
                                        fresh_signals_only=fresh_only,
-                                       market_filter=market_filter)
+                                       market_filter=market_filter,
+                                       cancel_flag=_bt_cancel_flag)
             save_results(results)
             print(f"[backtest] Tamamlandı: {len(results)} sinyal, {len(tickers)} hisse")
             if len(results) == 0:

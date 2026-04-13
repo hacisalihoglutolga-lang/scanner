@@ -130,6 +130,18 @@ export default function BacktestPage({ onBack }) {
     }
   }
 
+  async function stopBacktest() {
+    try {
+      await fetch('/api/backtest/stop', { method: 'POST' })
+      setLoading(false)
+      setMsg('Backtest durduruldu.')
+      if (pollRef.current) clearInterval(pollRef.current)
+      setProgress(p => p ? { ...p, running: false } : p)
+    } catch {
+      setMsg('Durdurma hatası')
+    }
+  }
+
   async function runEvolve() {
     setMsg('Parametreler optimize ediliyor…')
     try {
@@ -210,7 +222,12 @@ export default function BacktestPage({ onBack }) {
         <button className="bt-run-btn" onClick={runBacktest} disabled={loading}>
           {loading ? '⟳ Çalışıyor…' : '▶ Backtest Başlat'}
         </button>
-        {stats && (
+        {loading && (
+          <button className="bt-stop-btn" onClick={stopBacktest}>
+            ⏹ Durdur
+          </button>
+        )}
+        {stats && !loading && (
           <button className="bt-evolve-btn" onClick={runEvolve} disabled={loading}>
             🧬 Parametreleri Optimize Et
           </button>

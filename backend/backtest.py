@@ -80,9 +80,9 @@ def _download_history(ticker: str, force: bool = False) -> dict | None:
     try:
         t = yf.Ticker(yf_t)
         data = {
-            "1d":  t.history(period="3y",  interval="1d",  auto_adjust=True),
-            "1w":  t.history(period="5y",  interval="1wk", auto_adjust=True),
-            "1mo": t.history(period="10y", interval="1mo", auto_adjust=True),
+            "1d":  t.history(period="3y",  interval="1d",  auto_adjust=True, timeout=30),
+            "1w":  t.history(period="5y",  interval="1wk", auto_adjust=True, timeout=30),
+            "1mo": t.history(period="10y", interval="1mo", auto_adjust=True, timeout=30),
         }
         # Boş kontrolü
         if data["1d"] is None or len(data["1d"]) < 50:
@@ -175,7 +175,7 @@ def _bist100_regime(signal_date) -> str:
     if not _bist100_cache or time.time() - _bist100_cache.get("ts", 0) > 86400:
         try:
             t = yf.Ticker("XU100.IS")
-            df = t.history(period="3y", interval="1d", auto_adjust=True)
+            df = t.history(period="3y", interval="1d", auto_adjust=True, timeout=30)
             _bist100_cache = {"data": df, "ts": time.time()}
         except Exception:
             return "BULL"   # veri alınamazsa filtreleme yapma
@@ -326,7 +326,8 @@ def backtest_tickers(tickers: list[str],
                      max_workers: int = 4,
                      progress_cb=None,
                      fresh_signals_only: bool = True,
-                     market_filter: bool = True) -> list[dict]:
+                     market_filter: bool = True,
+                     cancel_flag=None) -> list[dict]:
     """Birden fazla hisse için paralel backtest."""
     all_results = []
     done = 0
@@ -338,10 +339,15 @@ def backtest_tickers(tickers: list[str],
             for t in tickers
         }
         for fut in as_completed(futures):
+            if cancel_flag and cancel_flag[0]:
+                print("[backtest] İptal sinyali alındı — durduruluyor")
+                break
             ticker = futures[fut]
             try:
-                res = fut.result()
+                res = fut.result(timeout=180)  # 3 dk — takılı kalırsa atla
                 all_results.extend(res)
+            except TimeoutError:
+                print(f"[backtest] {ticker} zaman aşımı — atlandı")
             except Exception as e:
                 print(f"[backtest] {ticker} hata: {e}")
             done += 1
