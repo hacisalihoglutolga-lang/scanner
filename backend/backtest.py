@@ -19,6 +19,7 @@ try:
 except ImportError:
     _session = None
 import time
+import threading
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -80,9 +81,9 @@ def _download_history(ticker: str, force: bool = False) -> dict | None:
     try:
         t = yf.Ticker(yf_t)
         data = {
-            "1d":  t.history(period="3y",  interval="1d",  auto_adjust=True, timeout=30),
-            "1w":  t.history(period="5y",  interval="1wk", auto_adjust=True, timeout=30),
-            "1mo": t.history(period="10y", interval="1mo", auto_adjust=True, timeout=30),
+            "1d":  t.history(period="3y",  interval="1d",  auto_adjust=True),
+            "1w":  t.history(period="5y",  interval="1wk", auto_adjust=True),
+            "1mo": t.history(period="10y", interval="1mo", auto_adjust=True),
         }
         # Boş kontrolü
         if data["1d"] is None or len(data["1d"]) < 50:
@@ -103,6 +104,38 @@ def _download_history(ticker: str, force: bool = False) -> dict | None:
     except Exception as e:
         _log.error("[bt] %s veri indirme hatası: %s", ticker, e)
         return None
+
+
+def _download_history_timed(ticker: str, force: bool = False,
+                             timeout_sec: int = 90) -> dict | None:
+    """
+    _download_history'yi daemon thread içinde çalıştır ve
+    timeout_sec içinde bitmezse None döndür.
+    yfinance yf.Ticker.history() yönteminin timeout parametresi
+    TCP bağlantısını her zaman kesmediği için bu katman zorunlu.
+    """
+    result: list = [None]
+    exc:    list = [None]
+
+    def _target():
+        try:
+            result[0] = _download_history(ticker, force)
+        except Exception as e:
+            exc[0] = e
+
+    t = threading.Thread(target=_target, daemon=True)
+    t.start()
+    t.join(timeout=timeout_sec)
+
+    if t.is_alive():
+        _log.warning("[bt] %s: indirme zaman aşımı (%ds) — atlandı", ticker, timeout_sec)
+        return None
+
+    if exc[0]:
+        _log.error("[bt] %s indirme hatası: %s", ticker, exc[0])
+        return None
+
+    return result[0]
 
 
 # ─── Sinyal hesaplama (enjeksiyon ile) ───────────────────────────────────────
@@ -173,11 +206,19 @@ def _bist100_regime(signal_date) -> str:
     """
     global _bist100_cache
     if not _bist100_cache or time.time() - _bist100_cache.get("ts", 0) > 86400:
-        try:
-            t = yf.Ticker("XU100.IS")
-            df = t.history(period="3y", interval="1d", auto_adjust=True, timeout=30)
-            _bist100_cache = {"data": df, "ts": time.time()}
-        except Exception:
+        result: list = [None]
+        def _fetch_bist():
+            try:
+                t = yf.Ticker("XU100.IS")
+                result[0] = t.history(period="3y", interval="1d", auto_adjust=True)
+            except Exception:
+                pass
+        th = threading.Thread(target=_fetch_bist, daemon=True)
+        th.start()
+        th.join(timeout=30)
+        if not th.is_alive() and result[0] is not None:
+            _bist100_cache = {"data": result[0], "ts": time.time()}
+        else:
             return "BULL"   # veri alınamazsa filtreleme yapma
 
     df = _bist100_cache["data"]
@@ -210,7 +251,7 @@ def backtest_ticker(ticker: str,
     if params is None:
         params = load_params()
 
-    data = _download_history(ticker, force=force_download)
+    data = _download_history_timed(ticker, force=force_download, timeout_sec=90)
     if data is None:
         return []
 
@@ -344,10 +385,8 @@ def backtest_tickers(tickers: list[str],
                 break
             ticker = futures[fut]
             try:
-                res = fut.result(timeout=180)  # 3 dk — takılı kalırsa atla
+                res = fut.result()
                 all_results.extend(res)
-            except TimeoutError:
-                print(f"[backtest] {ticker} zaman aşımı — atlandı")
             except Exception as e:
                 print(f"[backtest] {ticker} hata: {e}")
             done += 1
