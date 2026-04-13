@@ -125,18 +125,20 @@ def create_user(username: str, password: str, is_admin: bool = False):
 
 def delete_user(user_id: int):
     conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT is_admin FROM users WHERE id=?", (user_id,))
-    row = c.fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
-    if row[0]:
-        c.execute("SELECT COUNT(*) FROM users WHERE is_admin=1")
-        if c.fetchone()[0] <= 1:
-            raise HTTPException(status_code=400, detail="Son admin silinemez")
-    c.execute("DELETE FROM users WHERE id=?", (user_id,))
-    conn.commit()
-    conn.close()
+    try:
+        c = conn.cursor()
+        c.execute("SELECT is_admin FROM users WHERE id=?", (user_id,))
+        row = c.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        if row[0]:
+            c.execute("SELECT COUNT(*) FROM users WHERE is_admin=1")
+            if c.fetchone()[0] <= 1:
+                raise HTTPException(status_code=400, detail="Son admin silinemez")
+        c.execute("DELETE FROM users WHERE id=?", (user_id,))
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def change_password(user_id: int, new_password: str):

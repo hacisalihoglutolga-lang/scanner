@@ -194,7 +194,7 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
     _in_progress.add(ticker)
 
     try:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         async with _yf_semaphore:
             try:
                 result = await asyncio.wait_for(
@@ -346,7 +346,7 @@ async def _refresh_batch(tickers: list[str]):
 @app.get("/api/debug/test")
 async def debug_test():
     """Tek bir hisse çek, ne döndüğünü göster."""
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     try:
         result = await asyncio.wait_for(
             loop.run_in_executor(executor, _safe_analyze, "THYAO"),
@@ -372,8 +372,7 @@ async def recent_signals(limit: int = 50):
 @app.get("/api/stock/{ticker}/ohlcv")
 async def get_ohlcv(ticker: str, days: int = 180, interval: str = "1d"):
     """Mum grafik için OHLCV verisi döndürür. interval: 1h, 1d, 1wk"""
-    import yfinance as yf
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     def _fetch():
         try:
             import yfinance as yf
@@ -433,7 +432,7 @@ async def stock_deep_analysis(ticker: str):
 @app.get("/api/pattern-scan")
 async def pattern_scan_endpoint(category: str = "BIST30", direction: str = "all"):
     """Formasyon tarayıcısı: tüm hisseleri klasik formasyonlar + Elliott Wave açısından tarar."""
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     results = await loop.run_in_executor(
         executor,
         lambda: scan_patterns(category, direction, _cache)
@@ -444,7 +443,7 @@ async def pattern_scan_endpoint(category: str = "BIST30", direction: str = "all"
 @app.get("/api/stock/{ticker}/patterns")
 async def stock_patterns_endpoint(ticker: str):
     """Tek bir hisse için formasyon analizi."""
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(
         executor,
         lambda: analyze_patterns(ticker.upper(), _cache)
@@ -457,7 +456,7 @@ async def screen_stocks_endpoint(body: dict):
     """Temel tarayıcı: filtrele ve sonuçları döndür."""
     category = body.get("category", "BIST100")
     filters  = body.get("filters", [])
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     results = await loop.run_in_executor(
         executor,
         lambda: run_screen(category, filters, _cache)
@@ -465,7 +464,7 @@ async def screen_stocks_endpoint(body: dict):
     return {"stocks": results, "total": len(results)}
 
 
-@app.delete("/api/cache")
+@app.delete("/api/cache", dependencies=[Depends(require_admin)])
 async def clear_cache():
     _cache.clear()
     _cache_time.clear()

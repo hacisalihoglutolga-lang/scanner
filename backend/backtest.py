@@ -404,10 +404,9 @@ def compute_stats(results: list[dict]) -> dict:
     # Setup türüne göre istatistikler
     stats["by_setup"] = {}
     for setup in ["KIRILIM", "DÖNÜŞ", "STANDART"]:
-        sub = df[df.get("setup_type", "STANDART") == setup] if "setup_type" in df else pd.DataFrame()
-        # pandas column lookup
-        if "setup_type" in df.columns:
-            sub = df[df["setup_type"] == setup]
+        if "setup_type" not in df.columns:
+            break
+        sub = df[df["setup_type"] == setup]
         if len(sub) == 0:
             continue
         stats["by_setup"][setup] = {
@@ -435,7 +434,7 @@ def _pct(df, col, cond):
     clean = df[col].dropna()
     if len(clean) == 0:
         return None
-    return round(eval(f"(clean {cond}).mean()") * 100, 1)
+    return round((clean > 0).mean() * 100, 1)
 
 
 def _avg(df, col):

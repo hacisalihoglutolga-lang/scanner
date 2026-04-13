@@ -7,68 +7,73 @@ DB_PATH = "signals.db"
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS signals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ticker TEXT NOT NULL,
-            action TEXT NOT NULL,
-            score REAL,
-            price REAL,
-            sl REAL,
-            tp REAL,
-            data TEXT,
-            created_at TEXT DEFAULT (datetime('now'))
-        )
-    """)
-    c.execute("CREATE INDEX IF NOT EXISTS idx_signals_ticker ON signals(ticker)")
-    c.execute("CREATE INDEX IF NOT EXISTS idx_signals_created ON signals(created_at DESC)")
-    c.execute("CREATE INDEX IF NOT EXISTS idx_signals_action ON signals(action)")
-    # Eski kayıtları temizle (90 günden eski)
-    c.execute("DELETE FROM signals WHERE created_at < datetime('now', '-90 days')")
-    conn.commit()
-    conn.close()
+    try:
+        c = conn.cursor()
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS signals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticker TEXT NOT NULL,
+                action TEXT NOT NULL,
+                score REAL,
+                price REAL,
+                sl REAL,
+                tp REAL,
+                data TEXT,
+                created_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        c.execute("CREATE INDEX IF NOT EXISTS idx_signals_ticker ON signals(ticker)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_signals_created ON signals(created_at DESC)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_signals_action ON signals(action)")
+        # Eski kayıtları temizle (90 günden eski)
+        c.execute("DELETE FROM signals WHERE created_at < datetime('now', '-90 days')")
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def save_signal(ticker, action, score, price, sl, tp, data):
     conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("""
-        INSERT INTO signals (ticker, action, score, price, sl, tp, data, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (ticker, action, score, price, sl, tp, json.dumps(data), datetime.now().isoformat()))
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute("""
+            INSERT INTO signals (ticker, action, score, price, sl, tp, data, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (ticker, action, score, price, sl, tp, json.dumps(data), datetime.now().isoformat()))
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def get_recent_signals(limit=50):
     """Her hisse için en son sinyali döndürür, skor ve tarihe göre sıralar."""
     conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    # Her hisse için en son kaydı al (ROW_NUMBER ile)
-    c.execute("""
-        WITH latest AS (
-            SELECT ticker, action, score, price, sl, tp, data, created_at,
-                   ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY created_at DESC) AS rn
-            FROM signals
-        )
-        SELECT ticker, action, score, price, sl, tp, data, created_at
-        FROM latest
-        WHERE rn = 1
-        ORDER BY
-            CASE action
-                WHEN 'GÜÇLÜ AL' THEN 1
-                WHEN 'AL'       THEN 2
-                WHEN 'İZLE'     THEN 3
-                WHEN 'ZAYIF'    THEN 4
-                WHEN 'SAT'      THEN 5
-                ELSE 6
-            END,
-            score DESC
-        LIMIT ?
-    """, (limit,))
-    rows = c.fetchall()
-    conn.close()
+    try:
+        c = conn.cursor()
+        # Her hisse için en son kaydı al (ROW_NUMBER ile)
+        c.execute("""
+            WITH latest AS (
+                SELECT ticker, action, score, price, sl, tp, data, created_at,
+                       ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY created_at DESC) AS rn
+                FROM signals
+            )
+            SELECT ticker, action, score, price, sl, tp, data, created_at
+            FROM latest
+            WHERE rn = 1
+            ORDER BY
+                CASE action
+                    WHEN 'GÜÇLÜ AL' THEN 1
+                    WHEN 'AL'       THEN 2
+                    WHEN 'İZLE'     THEN 3
+                    WHEN 'ZAYIF'    THEN 4
+                    WHEN 'SAT'      THEN 5
+                    ELSE 6
+                END,
+                score DESC
+            LIMIT ?
+        """, (limit,))
+        rows = c.fetchall()
+    finally:
+        conn.close()
     result = []
     for r in rows:
         try:
