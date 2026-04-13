@@ -5,6 +5,7 @@ import PortfolioPage from './components/PortfolioPage'
 import ScreenerPage from './components/ScreenerPage'
 import SignalsPage from './components/SignalsPage'
 import BacktestPage from './components/BacktestPage'
+import PerformancePage from './components/PerformancePage'
 import LoginPage from './components/LoginPage'
 import UsersPage from './components/UsersPage'
 import './App.css'
@@ -395,6 +396,9 @@ function App({ token, username, isAdmin, onLogout }) {
   if (page === 'backtest') {
     return <BacktestPage onBack={() => setPage('scanner')} />
   }
+  if (page === 'performance') {
+    return <PerformancePage onBack={() => setPage('scanner')} onTickerClick={fetchAndShowDetail} />
+  }
   if (page === 'users') {
     return <UsersPage onBack={() => setPage('scanner')} token={token} />
   }
@@ -564,6 +568,9 @@ function App({ token, username, isAdmin, onLogout }) {
           </button>
           <button className="backtest-nav-btn" onClick={() => setPage('backtest')}>
             ⚗ Backtest
+          </button>
+          <button className="perf-nav-btn" onClick={() => setPage('performance')}>
+            📈 Performans
           </button>
           {isAdmin && (
             <button className="users-nav-btn" onClick={() => setPage('users')} title="Kullanıcı Yönetimi">

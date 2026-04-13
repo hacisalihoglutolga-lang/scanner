@@ -600,6 +600,121 @@ async def set_backtest_params(body: dict):
     return {"message": "Parametreler kaydedildi", "params": body}
 
 
+# ── Sinyal Performans Takibi ──────────────────────────────────────────────────
+import sqlite3 as _sqlite3
+from datetime import datetime as _dt
+_perf_cache: dict = {"data": None, "ts": 0}
+_PERF_TTL = 4 * 3600  # 4 saat önbellek
+
+@app.get("/api/signal-performance")
+async def signal_performance():
+    """Her ticker için ilk AL/GÜÇLÜ AL sinyali alındıktan sonra fiyatın nereye gittiğini hesaplar."""
+    now = time.time()
+    if _perf_cache["data"] and now - _perf_cache["ts"] < _PERF_TTL:
+        return _perf_cache["data"]
+
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(_executor, _compute_signal_performance)
+    _perf_cache["data"] = result
+    _perf_cache["ts"] = now
+    return result
+
+
+def _compute_signal_performance():
+    import yfinance as yf
+    import sqlite3
+
+    conn = sqlite3.connect(os.path.join(os.path.dirname(__file__), "signals.db"))
+    c = conn.cursor()
+    # Her ticker için en erken AL/GÜÇLÜ AL sinyalini al
+    c.execute("""
+        SELECT ticker, action, price, sl, tp, MIN(created_at)
+        FROM signals
+        WHERE action IN ('AL', 'GÜÇLÜ AL') AND price > 0 AND sl > 0 AND tp > 0
+        GROUP BY ticker
+        ORDER BY MIN(created_at)
+    """)
+    rows = c.fetchall()
+    conn.close()
+
+    results = []
+    for ticker, action, entry_price, sl, tp, sig_date in rows:
+        try:
+            sig_dt = _dt.fromisoformat(sig_date)
+            start_str = sig_dt.strftime("%Y-%m-%d")
+            t = yf.Ticker(f"{ticker}.IS")
+            df = t.history(start=start_str, interval="1d", auto_adjust=True)
+            if df is None or len(df) < 2:
+                continue
+
+            closes = df["Close"].values.tolist()
+            highs  = df["High"].values.tolist()
+            lows   = df["Low"].values.tolist()
+
+            # TP / SL hangi gün ilk kez dokunuldu
+            tp_day = next((i for i, h in enumerate(highs) if h >= tp), None)
+            sl_day = next((i for i, l in enumerate(lows)  if l <= sl), None)
+
+            if tp_day is not None and sl_day is not None:
+                outcome = "TP" if tp_day <= sl_day else "SL"
+            elif tp_day is not None:
+                outcome = "TP"
+            elif sl_day is not None:
+                outcome = "SL"
+            else:
+                outcome = "DEVAM"
+
+            current_price = float(closes[-1])
+            return_pct    = round((current_price / entry_price - 1) * 100, 2)
+            max_pct       = round((max(highs) / entry_price - 1) * 100, 2)
+            sl_pct        = round((entry_price - sl) / entry_price * 100, 2)
+            tp_pct        = round((tp - entry_price) / entry_price * 100, 2)
+            days_held     = len(df) - 1
+
+            results.append({
+                "ticker":        ticker,
+                "action":        action,
+                "entry_price":   round(entry_price, 2),
+                "sl":            round(sl, 2),
+                "tp":            round(tp, 2),
+                "sig_date":      sig_date[:10],
+                "current_price": round(current_price, 2),
+                "return_pct":    return_pct,
+                "max_pct":       max_pct,
+                "sl_pct":        sl_pct,
+                "tp_pct":        tp_pct,
+                "days_held":     days_held,
+                "outcome":       outcome,
+            })
+        except Exception:
+            continue
+
+    if not results:
+        return {"total": 0, "tp_count": 0, "sl_count": 0, "open_count": 0,
+                "win_rate": None, "avg_return": None, "signals": []}
+
+    tp_count   = sum(1 for r in results if r["outcome"] == "TP")
+    sl_count   = sum(1 for r in results if r["outcome"] == "SL")
+    open_count = sum(1 for r in results if r["outcome"] == "DEVAM")
+    closed     = [r for r in results if r["outcome"] in ("TP", "SL")]
+    win_rate   = round(tp_count / len(closed) * 100, 1) if closed else None
+    avg_return = round(sum(r["return_pct"] for r in results) / len(results), 2)
+    avg_closed = round(sum(r["return_pct"] for r in closed) / len(closed), 2) if closed else None
+    pos_count  = sum(1 for r in results if r["return_pct"] > 0)
+
+    return _sanitize({
+        "total":       len(results),
+        "tp_count":    tp_count,
+        "sl_count":    sl_count,
+        "open_count":  open_count,
+        "win_rate":    win_rate,
+        "avg_return":  avg_return,
+        "avg_closed":  avg_closed,
+        "pos_count":   pos_count,
+        "signals":     sorted(results, key=lambda x: x["return_pct"], reverse=True),
+    })
+
+
 # --- Static frontend servisi (production build) ---
 _DIST = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
 if os.path.isdir(_DIST):
