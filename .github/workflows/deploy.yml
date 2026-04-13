@@ -16,6 +16,7 @@ jobs:
           key: ${{ secrets.DO_SSH_KEY }}
           script: |
             set -e
+            git config --global --add safe.directory /opt/bist-scanner
             cd /opt/bist-scanner
 
             echo "==> Pulling latest code..."
@@ -24,12 +25,7 @@ jobs:
             echo "==> Installing Python deps..."
             backend/venv/bin/pip install -q -r backend/requirements.txt
 
-            echo "==> Fixing permissions..."
-            chown -R www-data:www-data /opt/bist-scanner
-
             echo "==> Restarting service..."
-            systemctl restart bist-scanner
+            sudo systemctl restart bist-scanner
 
-            echo "==> Waiting for service to start..."
-            sleep 3
-            systemctl is-active bist-scanner && echo "Service is running" || (journalctl -u bist-scanner -n 20 && exit 1)
+            echo "==> Done!"
