@@ -44,7 +44,7 @@ def _set_rate_limit(wait_sec: float = 90.0):
 # Böylece lock tutulurken sleep olmaz — diğer thread'ler bloklanmaz.
 _api_call_lock = threading.Lock()
 _last_api_call = 0.0
-_MIN_API_GAP   = 0.5  # saniye — yfinance 1.x curl_cffi ile yeterli
+_MIN_API_GAP   = 0.3  # saniye — yfinance 1.x curl_cffi ile yeterli
 
 def _throttle():
     """API çağrısından önce çağır — lock dışında bekleyerek slot ayırır."""
@@ -440,6 +440,10 @@ def _resample_4h(df_1h):
 
 def _analyze_tf(df, tf_name: str, tf_type: str = "1d") -> dict | None:
     if df is None or len(df) < 15:
+        return None
+
+    df = df.dropna(subset=["Close", "High", "Low", "Open"])
+    if len(df) < 15:
         return None
 
     c, h, l = df["Close"], df["High"], df["Low"]
@@ -1397,6 +1401,11 @@ def analyze_stock(ticker: str) -> dict | None:
 
         df_1mo = _yf_history(t_obj, period="10y", interval="1mo", auto_adjust=True)
 
+        # Gunun yarım mumu NaN geliyor — hepsini dusur
+        for df_ref in [df_1d, df_1h, df_1w, df_1mo]:
+            if df_ref is not None:
+                df_ref.dropna(subset=["Close"], inplace=True)
+
         for df in [df_1d, df_1h, df_1w]:
             if df is not None:
                 for col in ["Dividends","Stock Splits"]:
@@ -1469,7 +1478,7 @@ def analyze_stock(ticker: str) -> dict | None:
 
         # Long/Short %
         bull_f = sum([
-            tf_1d["rsi"] > 50,
+            bool(tf_1d["rsi"] and tf_1d["rsi"] > 50),
             (tf_1d["macd"]["bullish"] if tf_1d["macd"] else False),
             tf_1d["trend"] == "BOĞA",
             weekly_bias == "Yükseliş",
@@ -1481,9 +1490,9 @@ def analyze_stock(ticker: str) -> dict | None:
         # Market gücü
         mkt_str = 0
         if tf_1d["ema200"] and cur > tf_1d["ema200"]: mkt_str += 30
-        if cur > tf_1d["ma8"]:   mkt_str += 30
-        if cur > tf_1d["ma20"]:  mkt_str += 25
-        if tf_1d["rel_vol"] > 1: mkt_str += 15
+        if tf_1d["ma8"] and cur > tf_1d["ma8"]:   mkt_str += 30
+        if tf_1d["ma20"] and cur > tf_1d["ma20"]:  mkt_str += 25
+        if tf_1d["rel_vol"] and tf_1d["rel_vol"] > 1: mkt_str += 15
 
         # Özet bullet'lar
         bullets = []
@@ -1495,13 +1504,13 @@ def analyze_stock(ticker: str) -> dict | None:
             bullets.append("Fiyat Bullish OB'de — ideal giriş bölgesi ✓")
         elif tf_1d["price_zone"] == "PAHALI":
             bullets.append("Premium bölge — OB'ye dönüş beklenebilir")
-        if tf_1d["rel_vol"] > 1.5:
+        if tf_1d["rel_vol"] and tf_1d["rel_vol"] > 1.5:
             bullets.append("Yüksek hacim onayı ✓")
-        elif tf_1d["rel_vol"] < 0.7:
+        elif tf_1d["rel_vol"] and tf_1d["rel_vol"] < 0.7:
             bullets.append("Düşük hacim — katılım zayıf")
         if weekly_bias == "Yükseliş":
             bullets.append("Haftalık yükseliş trendi ✓")
-        if tf_1d["rsi"] > 70:
+        if tf_1d["rsi"] and tf_1d["rsi"] > 70:
             bullets.append("RSI aşırı alım — dikkat ⚠")
 
         return {
@@ -1552,4 +1561,5 @@ def analyze_stock(ticker: str) -> dict | None:
         }
 
     except Exception as e:
+        import traceback as _tb; _tb.print_exc()
         return {"ticker": ticker, "error": str(e)}
