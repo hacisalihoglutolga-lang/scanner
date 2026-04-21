@@ -378,7 +378,7 @@ async def get_ohlcv(ticker: str, days: int = 180, interval: str = "1d"):
         try:
             import yfinance as yf
             _analyzer._check_rate_limit()
-            t = yf.Ticker(f"{ticker.upper()}.IS")
+            t = yf.Ticker(f"{ticker.upper()}.IS", session=_analyzer._yf_session)
             yf_interval = {"1h": "1h", "4h": "1h", "1d": "1d", "1wk": "1wk"}.get(interval, "1d")
             actual_days = min(days, 59) if interval in ("1h", "4h") else days
             df = t.history(period=f"{actual_days}d", interval=yf_interval)
@@ -656,7 +656,7 @@ def _compute_signal_performance():
         try:
             sig_dt = _dt.fromisoformat(sig_date)
             start_str = sig_dt.strftime("%Y-%m-%d")
-            t = yf.Ticker(f"{ticker}.IS")
+            t = yf.Ticker(f"{ticker}.IS", session=_analyzer._yf_session)
             df = t.history(start=start_str, interval="1d", auto_adjust=True)
             if df is None or len(df) < 2:
                 continue

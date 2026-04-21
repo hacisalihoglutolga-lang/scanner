@@ -12,11 +12,21 @@ import threading
 import socket
 warnings.filterwarnings("ignore")
 
-# Her socket işlemi için max 12s — asılı kalan bağlantıları keser
-socket.setdefaulttimeout(12)
+# Her socket işlemi için max 15s — asılı kalan bağlantıları keser
+socket.setdefaulttimeout(15)
 
-# yfinance 1.x kendi session'ını yönetiyor
-_yf_session = None
+# Browser gibi görünen session — data center IP tespitini zorlaştırır
+import requests as _requests
+_yf_session = _requests.Session()
+_yf_session.headers.update({
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+})
 
 # ─── Global Rate-Limit Bekleme ───────────────────────────────────────────────
 _rl_lock   = threading.Lock()
@@ -40,21 +50,22 @@ def _set_rate_limit(wait_sec: float = 90.0):
 
 
 # ─── Global API Çağrı Hız Sınırlayıcı ───────────────────────────────────────
-# Kaç thread çalışıyor olursa olsun saniyede max 1 yfinance isteği gönderir.
-# Bu şekilde sunucu IP'si Yahoo Finance'den 429 almaz.
+# Token-bucket: her thread atomik olarak bir slot ayırır, lock DIŞINDA bekler.
+# Böylece lock tutulurken sleep olmaz — diğer thread'ler bloklanmaz.
 _api_call_lock = threading.Lock()
 _last_api_call = 0.0
-_MIN_API_GAP   = 1.1  # saniye — iki yfinance çağrısı arasındaki minimum süre
+_MIN_API_GAP   = 1.2  # saniye — sunucu IP için güvenli aralık
 
 def _throttle():
-    """API çağrısından önce çağır — gerekirse bloklar."""
+    """API çağrısından önce çağır — lock dışında bekleyerek slot ayırır."""
     global _last_api_call
     with _api_call_lock:
-        now  = time.time()
-        wait = _MIN_API_GAP - (now - _last_api_call)
-        if wait > 0:
-            time.sleep(wait)
-        _last_api_call = time.time()
+        now       = time.time()
+        next_slot = max(now, _last_api_call + _MIN_API_GAP)
+        _last_api_call = next_slot  # slotu atomik ayır, lock bırak
+    wait = next_slot - time.time()
+    if wait > 0:
+        time.sleep(wait)  # lock dışında bekle
 
 
 def _yf_history(ticker_obj, **kwargs):
@@ -1386,7 +1397,7 @@ def _whale_signals(df_1d: pd.DataFrame, df_1h=None) -> dict:
 def analyze_stock(ticker: str) -> dict | None:
     yf_t = ticker + ".IS"
     try:
-        t_obj = yf.Ticker(yf_t)
+        t_obj = yf.Ticker(yf_t, session=_yf_session)
         df_1d = _yf_history(t_obj, period="6mo",  interval="1d",  auto_adjust=True)
         df_1h = _yf_history(t_obj, period="60d",  interval="1h",  auto_adjust=True)
         df_1w = _yf_history(t_obj, period="2y",   interval="1wk", auto_adjust=True)
