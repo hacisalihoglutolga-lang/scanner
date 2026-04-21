@@ -12,15 +12,11 @@ import threading
 import socket
 warnings.filterwarnings("ignore")
 
-# Her socket işlemi için max 15s — asılı kalan bağlantıları keser
+# Her socket işlemi için max 15s
 socket.setdefaulttimeout(15)
 
-# yfinance 1.x curl_cffi kullanıyor — curl_cffi session ile browser impersonation
-try:
-    from curl_cffi import requests as _cffi_requests
-    _yf_session = _cffi_requests.Session(impersonate="chrome120")
-except Exception:
-    _yf_session = None  # curl_cffi yoksa yfinance kendi default session'ını kullanır
+# yfinance 1.x kendi curl_cffi session'ını yönetiyor — dışarıdan session verme
+_yf_session = None
 
 # ─── Global Rate-Limit Bekleme ───────────────────────────────────────────────
 _rl_lock   = threading.Lock()
@@ -48,7 +44,7 @@ def _set_rate_limit(wait_sec: float = 90.0):
 # Böylece lock tutulurken sleep olmaz — diğer thread'ler bloklanmaz.
 _api_call_lock = threading.Lock()
 _last_api_call = 0.0
-_MIN_API_GAP   = 0.8  # saniye — curl_cffi browser impersonation ile yeterli
+_MIN_API_GAP   = 0.5  # saniye — yfinance 1.x curl_cffi ile yeterli
 
 def _throttle():
     """API çağrısından önce çağır — lock dışında bekleyerek slot ayırır."""
@@ -1391,7 +1387,7 @@ def _whale_signals(df_1d: pd.DataFrame, df_1h=None) -> dict:
 def analyze_stock(ticker: str) -> dict | None:
     yf_t = ticker + ".IS"
     try:
-        t_obj = yf.Ticker(yf_t, session=_yf_session)
+        t_obj = yf.Ticker(yf_t)
         df_1d = _yf_history(t_obj, period="6mo",  interval="1d",  auto_adjust=True)
         df_1h = _yf_history(t_obj, period="60d",  interval="1h",  auto_adjust=True)
         df_1w = _yf_history(t_obj, period="2y",   interval="1wk", auto_adjust=True)
