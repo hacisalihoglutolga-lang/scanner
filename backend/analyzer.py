@@ -30,7 +30,7 @@ def _check_rate_limit():
     if _rl_until > time.time():
         raise _RateLimited("rate-limited")
 
-def _set_rate_limit(wait_sec: float = 45.0):
+def _set_rate_limit(wait_sec: float = 90.0):
     """Rate limit algılandı."""
     global _rl_until
     with _rl_lock:
@@ -52,7 +52,7 @@ def _yf_history(ticker_obj, **kwargs):
     except Exception as e:
         msg = str(e).lower()
         if "too many requests" in msg or "rate limit" in msg or "429" in msg:
-            _set_rate_limit(45.0)
+            _set_rate_limit(90.0)
             raise _RateLimited("rate-limited")
         raise
 
@@ -1369,12 +1369,15 @@ def analyze_stock(ticker: str) -> dict | None:
     try:
         t_obj = yf.Ticker(yf_t)
         df_1d = _yf_history(t_obj, period="6mo",  interval="1d",  auto_adjust=True)
+        time.sleep(random.uniform(0.3, 0.7))
         df_1h = _yf_history(t_obj, period="60d",  interval="1h",  auto_adjust=True)
+        time.sleep(random.uniform(0.3, 0.7))
         df_1w = _yf_history(t_obj, period="2y",   interval="1wk", auto_adjust=True)
 
         if df_1d is None or len(df_1d) < 20:
             return {"ticker": ticker, "error": "Yetersiz veri"}
 
+        time.sleep(random.uniform(0.3, 0.5))
         df_1mo = _yf_history(t_obj, period="10y", interval="1mo", auto_adjust=True)
 
         for df in [df_1d, df_1h, df_1w]:

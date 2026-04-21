@@ -9,6 +9,7 @@ import time
 import math
 import json
 import os
+import random
 import analyzer as _analyzer
 from analyzer import analyze_stock
 from stocks import CATEGORIES
@@ -74,7 +75,7 @@ _cache: dict = {}
 _cache_time: dict = {}
 CACHE_TTL = 1800  # 30 minutes
 
-executor = ThreadPoolExecutor(max_workers=20)  # thread'ler asılsa bile yeni iş alabilsin
+executor = ThreadPoolExecutor(max_workers=10)  # thread'ler asılsa bile yeni iş alabilsin
 _yf_semaphore: asyncio.Semaphore | None = None
 
 # Permanently delisted tickers — never queried again
@@ -113,7 +114,7 @@ def _safe_analyze(ticker: str) -> dict | None:
 @app.on_event("startup")
 async def startup():
     global _yf_semaphore, _delisted
-    _yf_semaphore = asyncio.Semaphore(8)
+    _yf_semaphore = asyncio.Semaphore(3)
     # delisted.json'u sıfırla — geçici network hatalarıyla yanlış blacklist'e girenler temizlensin
     _delisted = set()
     _save_delisted(_delisted)
@@ -196,10 +197,11 @@ async def _fetch_and_cache(ticker: str) -> dict | None:
     try:
         loop = asyncio.get_running_loop()
         async with _yf_semaphore:
+            await asyncio.sleep(random.uniform(0.5, 1.5))  # sunucu IP rate-limit koruması
             try:
                 result = await asyncio.wait_for(
                     loop.run_in_executor(executor, _safe_analyze, ticker),
-                    timeout=50.0
+                    timeout=60.0
                 )
             except asyncio.TimeoutError:
                 cnt = _timeout_count.get(ticker, 0) + 1
