@@ -15,18 +15,12 @@ warnings.filterwarnings("ignore")
 # Her socket işlemi için max 15s — asılı kalan bağlantıları keser
 socket.setdefaulttimeout(15)
 
-# Browser gibi görünen session — data center IP tespitini zorlaştırır
-import requests as _requests
-_yf_session = _requests.Session()
-_yf_session.headers.update({
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.5",
-})
+# yfinance 1.x curl_cffi kullanıyor — curl_cffi session ile browser impersonation
+try:
+    from curl_cffi import requests as _cffi_requests
+    _yf_session = _cffi_requests.Session(impersonate="chrome120")
+except Exception:
+    _yf_session = None  # curl_cffi yoksa yfinance kendi default session'ını kullanır
 
 # ─── Global Rate-Limit Bekleme ───────────────────────────────────────────────
 _rl_lock   = threading.Lock()
@@ -54,7 +48,7 @@ def _set_rate_limit(wait_sec: float = 90.0):
 # Böylece lock tutulurken sleep olmaz — diğer thread'ler bloklanmaz.
 _api_call_lock = threading.Lock()
 _last_api_call = 0.0
-_MIN_API_GAP   = 1.2  # saniye — sunucu IP için güvenli aralık
+_MIN_API_GAP   = 0.8  # saniye — curl_cffi browser impersonation ile yeterli
 
 def _throttle():
     """API çağrısından önce çağır — lock dışında bekleyerek slot ayırır."""
