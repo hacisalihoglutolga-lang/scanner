@@ -39,9 +39,28 @@ def _set_rate_limit(wait_sec: float = 90.0):
             _rl_until = new_until
 
 
+# ─── Global API Çağrı Hız Sınırlayıcı ───────────────────────────────────────
+# Kaç thread çalışıyor olursa olsun saniyede max 1 yfinance isteği gönderir.
+# Bu şekilde sunucu IP'si Yahoo Finance'den 429 almaz.
+_api_call_lock = threading.Lock()
+_last_api_call = 0.0
+_MIN_API_GAP   = 1.1  # saniye — iki yfinance çağrısı arasındaki minimum süre
+
+def _throttle():
+    """API çağrısından önce çağır — gerekirse bloklar."""
+    global _last_api_call
+    with _api_call_lock:
+        now  = time.time()
+        wait = _MIN_API_GAP - (now - _last_api_call)
+        if wait > 0:
+            time.sleep(wait)
+        _last_api_call = time.time()
+
+
 def _yf_history(ticker_obj, **kwargs):
-    """yfinance history çağrısını rate limit'e karşı sarmalar."""
+    """yfinance history çağrısını hız sınırlayıcı + rate limit korumasıyla sarmalar."""
     _check_rate_limit()
+    _throttle()
     try:
         df = ticker_obj.history(**kwargs)
         if df is not None and not df.empty:
@@ -1369,15 +1388,12 @@ def analyze_stock(ticker: str) -> dict | None:
     try:
         t_obj = yf.Ticker(yf_t)
         df_1d = _yf_history(t_obj, period="6mo",  interval="1d",  auto_adjust=True)
-        time.sleep(random.uniform(0.3, 0.7))
         df_1h = _yf_history(t_obj, period="60d",  interval="1h",  auto_adjust=True)
-        time.sleep(random.uniform(0.3, 0.7))
         df_1w = _yf_history(t_obj, period="2y",   interval="1wk", auto_adjust=True)
 
         if df_1d is None or len(df_1d) < 20:
             return {"ticker": ticker, "error": "Yetersiz veri"}
 
-        time.sleep(random.uniform(0.3, 0.5))
         df_1mo = _yf_history(t_obj, period="10y", interval="1mo", auto_adjust=True)
 
         for df in [df_1d, df_1h, df_1w]:
